@@ -53,3 +53,9 @@ dkms.conf
 
 # ESP-IDF default build directory name
 build
+
+# Vscode config
+.vscode
+
+# devcontainer
+.devcontainer
