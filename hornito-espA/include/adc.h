@@ -7,6 +7,7 @@
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
+#include <math.h>
 
 void adc1_init();
 void adc1_create_oneshot_unit();
