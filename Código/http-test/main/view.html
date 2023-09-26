@@ -1,32 +1,30 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diseño Retro</title>
-    <style>
-        body {
-            background-color: #000;
-            color: #fff;
-            font-family: 'Courier New', monospace;
-            text-align: center;
-            padding: 100px;
-        }
-        h1 {
-            font-size: 48px;
-            text-transform: uppercase;
-            letter-spacing: 10px;
-        }
-    </style>
-    <script>
-        setInterval(updateValues, 1000);
-
-        function updateValues() {
-            location.reload(); 
-        }
-    </script>
+    <title>Enviar Segundos Desde el EPOCH con POST</title>
 </head>
 <body>
-    <h1>Prueba número aleatorio: %d</h1>
+    <h2>Enviar Segundos Desde el EPOCH al Servidor</h2>
+
+    <!-- Formulario con un campo de entrada para segundos desde el EPOCH -->
+    <form id="formulario-segundos" action="/post_time" method="post">
+        <input type="hidden" name="segundos_desde_epoch" id="campo-segundos" value="">
+    </form>
+
+    <!-- Botón para enviar los segundos desde el EPOCH -->
+    <button onclick="enviarSegundosDesdeEpoch()">Enviar Segundos Desde el EPOCH</button>
+
+    <script>
+        function enviarSegundosDesdeEpoch() {
+            // Obtener la cantidad de segundos desde el EPOCH
+            var segundosDesdeEpoch = Math.floor(Date.now() / 1000);
+
+            // Establecer los segundos desde el EPOCH como el valor del campo oculto
+            document.getElementById("campo-segundos").value = segundosDesdeEpoch;
+
+            // Envía el formulario oculto
+            document.getElementById("formulario-segundos").submit();
+        }
+    </script>
 </body>
 </html>
