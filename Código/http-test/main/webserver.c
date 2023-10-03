@@ -88,8 +88,11 @@ esp_err_t time_post_handler(httpd_req_t *req)
         remaining -= ret;
     }
 
-    // Enviar una respuesta de éxito
-    //httpd_resp_send(req, "Datos recibidos con éxito");
+    // Después de procesar los datos, envía una respuesta de redirección 303 (See Other)
+    httpd_resp_set_status(req, "303 See Other");
+    httpd_resp_set_hdr(req, "Location", "/");
+    httpd_resp_send(req, NULL, 0);
+
     return ESP_OK;
 }
 
