@@ -1,30 +1,96 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Enviar Segundos Desde el EPOCH con POST</title>
+    <meta charset="UTF-8">
+    <title>Tabla HTML Estilizada con Datos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        table {
+            width: 50%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background-color: #fff;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #333;
+            color: #fff;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+    </style>
 </head>
 <body>
-    <h2>Enviar Segundos Desde el EPOCH al Servidor</h2>
-
-    <!-- Formulario con un campo de entrada para segundos desde el EPOCH -->
-    <form id="formulario-segundos" action="/post_time" method="post">
-        <input type="hidden" name="segundos_desde_epoch" id="campo-segundos" value="">
-    </form>
-
-    <!-- Botón para enviar los segundos desde el EPOCH -->
-    <button onclick="enviarSegundosDesdeEpoch()">Enviar Segundos Desde el EPOCH</button>
+    <h2>Medición de Conductividad Térmica</h2>
+    
+    <!-- Crear la tabla -->
+    <table>
+        <thead>
+            <tr>
+                <th>Tiempo</th>
+                <th>Potencia entregada [W]</th>
+                <th>Temperatura Placa Fría [°C]</th>
+                <th>Temperatura Placa Caliente [°C]</th>
+            </tr>
+        </thead>
+        <tbody id="tabla-datos">
+            <!-- Aquí se agregarán las filas con datos dinámicamente -->
+        </tbody>
+    </table>
 
     <script>
-        function enviarSegundosDesdeEpoch() {
-            // Obtener la cantidad de segundos desde el EPOCH
-            var segundosDesdeEpoch = Math.floor(Date.now() / 1000);
+        // Función para realizar una solicitud al servidor y actualizar la tabla
+        function actualizarTabla() {
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function() {
+                if (this.readyState == 4 && this.status == 200) {
+                    // Parsear los datos JSON recibidos del servidor
+                    var nuevosDatos = JSON.parse(this.responseText);
 
-            // Establecer los segundos desde el EPOCH como el valor del campo oculto
-            document.getElementById("campo-segundos").value = segundosDesdeEpoch;
+                    // Limpiar la tabla
+                    var tabla = document.getElementById("tabla-datos");
+                    tabla.innerHTML = '';
 
-            // Envía el formulario oculto
-            document.getElementById("formulario-segundos").submit();
+                    // Recorrer los nuevos datos y agregarlos a la tabla
+                    nuevosDatos.forEach(function(dato) {
+                        var fila = tabla.insertRow();
+                        var celdaTiempo = fila.insertCell(0);
+                        var celdaPotencia = fila.insertCell(1);
+                        var celdaTemperaturaPF = fila.insertCell(2);
+                        var celdaTemperaturaPC = fila.insertCell(3);
+
+                        celdaTiempo.innerHTML = dato.tiempo;
+                        celdaPotencia.innerHTML = dato.potencia;
+                        celdaTemperaturaPF.innerHTML = dato.temperaturaPF;
+                        celdaTemperaturaPC.innerHTML = dato.temperaturaPC;
+                    });
+                }
+            };
+            xhttp.open("GET", "/obtener_datos", true); // Reemplaza "/obtener_datos" con la URL correcta de tu servidor
+            xhttp.send();
         }
+
+        // Actualizar la tabla cada 5 segundos (ajusta el intervalo según tus necesidades)
+        setInterval(actualizarTabla, 5000);
     </script>
 </body>
 </html>
