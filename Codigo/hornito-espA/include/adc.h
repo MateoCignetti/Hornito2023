@@ -10,11 +10,8 @@
 #include <math.h>
 
 void adc1_init();
-void adc1_create_oneshot_unit();
-void adc1_channel0_config();
-void adc1_calibration();
-uint16_t get_adc1_c0_voltage_multisampling();
-void create_adc_read_task();
-void vTaskAdc1C0Read();
+void adc2_init();
+uint16_t get_adc_voltage_multisampling();
+void create_adc_tasks();
 
 #endif
