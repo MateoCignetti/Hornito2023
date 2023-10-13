@@ -76,7 +76,7 @@ uint16_t get_adc1_c0_voltage_multisampling(){
     }
     adc_raw_sum /= MULTISAMPLE_SIZE;
         
-    adc_cali_raw_to_voltage(adc1_cali_handle, adc_raw, &adc_voltage);
+    adc_cali_raw_to_voltage(adc1_cali_handle, adc_raw_sum, &adc_voltage);
     
     return adc_voltage;
 }
