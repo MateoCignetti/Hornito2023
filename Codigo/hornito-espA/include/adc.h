@@ -11,7 +11,7 @@
 
 void adc1_init();
 void adc2_init();
-uint16_t get_adc_voltage_multisampling();
+uint16_t get_adc_voltage_mv_multisampling(adc_unit_t adc_unit, adc_channel_t adc_channel);
 void create_adc_tasks();
 
 #endif

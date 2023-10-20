@@ -1,23 +1,16 @@
 #include "adc.h"
 
 // Defines
-#define ADC1_DESIRED_BITWIDTH ADC_BITWIDTH_12
-#define ADC2_DESIRED_BITWIDTH ADC_BITWIDTH_12
-#define ADC1_CONFIGURED_CHANNELS 4
-#define ADC2_CONFIGURED_CHANNELS 0
-#define MULTISAMPLE_SIZE 64
-#define MULTISAMPLE_DELAY_MS 1
-#define ADC_READING_TASK_DELAY_MS 2000 // Must not be less than (MULTISAMPLE_SIZE * MULTISAMPLE_DELAY_MS)
-//#define DIVIDER_RESISTOR_O 46690
-//#define SUPPLY_VOLTAGE_MV 3324
+#define ADC1_DESIRED_BITWIDTH ADC_BITWIDTH_12   // Defines the desired bitwidth for ADC1
+#define ADC2_DESIRED_BITWIDTH ADC_BITWIDTH_12   // Defines the desired bitwidth for ADC2
+#define ADC1_CONFIGURED_CHANNELS 4              // Defines the number of channels to be configured on ADC1
+#define ADC2_CONFIGURED_CHANNELS 0              // Defines the number of channels to be configured on ADC2
+#define MULTISAMPLE_SIZE 64                     // Defines the number of ADC readings to be taken in the multisampling function
+#define MULTISAMPLE_DELAY_MS 1                  // Defines the delay between each ADC reading in the multisampling function
+#define ADC_READING_TASK_DELAY_MS 2000          // Must not be less than (MULTISAMPLE_SIZE * MULTISAMPLE_DELAY_MS)
+#define ADC_DEBUGGING_TASK_DELAY_MS 5000        // Defines the period of the ADC debugging task
 
-#define ADC_DEBUGGING_TASK 0  // Defines and creates a task that reads all configured channels every 5 seconds
-
-// Constant values
-const int DIVIDER_RESISTOR_O = 46690;
-const float SUPPLY_VOLTAGE_V = 3.324;
-const float A_NTC = 0.1609525156;
-const float B_NTC = 3977.1932;
+#define ADC_DEBUGGING_TASK 0                    // Defines and creates a task that reads all configured channels every 5 seconds
 
 // ESP-LOG Tags
 const static char* TAG_ADC = "ADC";
@@ -28,8 +21,6 @@ static adc_oneshot_unit_handle_t adc1_handle;
 static adc_cali_handle_t adc1_cali_handle;
 static adc_oneshot_unit_handle_t adc2_handle;
 static adc_cali_handle_t adc2_cali_handle;
-
-static TaskHandle_t xTaskAdcRead_handle;
 #if ADC_DEBUGGING_TASK
 static TaskHandle_t xTaskAdcDebug_handle;
 #endif
@@ -42,12 +33,10 @@ static void adc1_configure_channels();
 static void adc2_create_oneshot_unit();
 static void adc2_calibration();
 static void adc2_configure_channels();
-
-static void vTaskAdc1C0Read();
-
 #if ADC_DEBUGGING_TASK
 static void vTaskReadAllChannels();
 #endif
+//
 
 // Functions
 void adc1_init(){
@@ -137,7 +126,7 @@ static void adc2_configure_channels(){
     }
 }
 
-uint16_t get_adc_voltage_multisampling(adc_unit_t adc_unit, adc_channel_t adc_channel){
+uint16_t get_adc_voltage_mv_multisampling(adc_unit_t adc_unit, adc_channel_t adc_channel){
     adc_oneshot_unit_handle_t adc_handle = NULL;
     adc_cali_handle_t adc_cali_handle = NULL;
     if(adc_unit == ADC_UNIT_1 && adc_channel < ADC1_CONFIGURED_CHANNELS){
@@ -167,14 +156,6 @@ uint16_t get_adc_voltage_multisampling(adc_unit_t adc_unit, adc_channel_t adc_ch
 }
 
 void create_adc_tasks(){
-    xTaskCreatePinnedToCore(vTaskAdc1C0Read,
-                            "ADC1 C0 read task",
-                            configMINIMAL_STACK_SIZE * 10,
-                            NULL,
-                            tskIDLE_PRIORITY + 1,
-                            &xTaskAdcRead_handle,
-                            0);
-
     #if ADC_DEBUGGING_TASK
     xTaskCreatePinnedToCore(vTaskReadAllChannels,
                             "ADC1 C0 read task",
@@ -188,30 +169,9 @@ void create_adc_tasks(){
 //
 
 // FreeRTOS Tasks
-static void vTaskAdc1C0Read(){
-    uint16_t adc_voltage_mv = 0;
-    float adc_voltage_v = 0.0;
-    float ntc_resistance_ko = 0.0;
-    float ntc_temperature_c = 0.0;
-    TickType_t xLastWakeTime = xTaskGetTickCount();
-
-    while(true){
-        adc_voltage_mv = get_adc_voltage_multisampling(ADC_UNIT_1, ADC_CHANNEL_0);
-        adc_voltage_v = adc_voltage_mv / 1000.0;
-        printf("%.2f\n", adc_voltage_v);
-        ntc_resistance_ko = (DIVIDER_RESISTOR_O / 1000 * ((SUPPLY_VOLTAGE_V * 1000) - adc_voltage_mv)) / adc_voltage_mv;
-        ntc_temperature_c = (B_NTC / log((DIVIDER_RESISTOR_O* ( (SUPPLY_VOLTAGE_V / adc_voltage_v) - 1) ) / A_NTC)) - 273.15;
-        //ntc_temperature_c =(DIVIDER_RESISTOR_O*((SUPPLY_VOLTAGE_V/(adc_voltage_mv/1000)) - 1))/(A_NTC);
-        //ntc_temperature_c = log(ntc_temperature_c);
-        ESP_LOGI(TAG_ADC, "ADC1-C0: %.2f °C", ntc_temperature_c);
-        ESP_LOGI(TAG_ADC, "ADC1-C0: %.2f kOhm", ntc_resistance_ko);
-
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(ADC_READING_TASK_DELAY_MS));
-    }
-}
-
 #if ADC_DEBUGGING_TASK
 static void vTaskReadAllChannels(){  //Only used for debugging
+    TickType_t xLastWakeTime = xTaskGetTickCount();
     while(true){
         for(int i = 0; i < ADC1_CONFIGURED_CHANNELS; i++){
             uint16_t adc_raw = 0;
@@ -229,7 +189,7 @@ static void vTaskReadAllChannels(){  //Only used for debugging
             ESP_LOGI(TAG_ADC, "ADC2-C%d: %d mV", i, adc_voltage);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(ADC_DEBUGGING_TASK_DELAY_MS));
     }
 }
 #endif

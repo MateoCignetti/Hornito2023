@@ -2,6 +2,7 @@
 
 #include "adc.h"
 #include "dimmer.h"
+#include "ntc.h"
 //
 
 // Defines
@@ -43,7 +44,8 @@ void app_main(void){
 
 // FreeRTOS Task create
 void tasks_create(){
-    create_adc_tasks();
+    //create_adc_tasks();
+    create_ntc_tasks();
     //create_dimmer_task();
 }
 //
