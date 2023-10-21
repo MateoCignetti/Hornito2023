@@ -1,15 +1,33 @@
 #include "webserver.h"
-#include "cJSON.h"
 
 #define HTML_NEG_OFFSET 1   // Offset value for HTML manipulation.
+#define DATA_ARRAY_SIZE 100 // Maximum number of data entries.
+
+#define TIME_ARRAY_SIZE 100  // Maximum length of time string.
+#define POWER_ARRAY_SIZE 100 // Maximum length of power string.
+#define TEMP_ARRAY_SIZE 100  // Maximum length of temperature string.
+
+// Typedefs
+typedef struct{
+    char tiempo[TIME_ARRAY_SIZE];
+    char potencia[POWER_ARRAY_SIZE];
+    char temperaturaPF[TEMP_ARRAY_SIZE];
+    char temperaturaPC[TEMP_ARRAY_SIZE];
+} Measurement;
+//
 
 // Private function prototypes
 static esp_err_t root_get_handler(httpd_req_t *req);        //Handler for GET requests to the root URI.
 static esp_err_t time_post_handler(httpd_req_t *req);       //Handler for POST requests to "/post_time" URI.
-static esp_err_t obtener_datos_handler(httpd_req_t *req);   //Handler for GET requests to "/obtener_datos" URI.
+static esp_err_t get_data_handler(httpd_req_t *req);   //Handler for GET requests to "/get_data" URI.
 //
 
 // Global variables
+static int data_n = 0;                              //Number of data entries.
+static Measurement measurements[DATA_ARRAY_SIZE];   //Array of measurements.
+//
+
+// URI handlers
 static const httpd_uri_t root = {
     .uri = "/",                         //Root URI (Uniform Resource Identifier) path
     .method = HTTP_GET,                 //HTTP GET method
@@ -22,10 +40,10 @@ static const httpd_uri_t time_post = {
     .handler = time_post_handler,       //Handler function for time POST requests
 };
 
-static const httpd_uri_t obtener_datos = {
-    .uri = "/obtener_datos",            //URI path for handling data retrieval requests
+static const httpd_uri_t get_data = {
+    .uri = "/get_data",            //URI path for handling data retrieval requests
     .method = HTTP_GET,                 //HTTP GET method
-    .handler = obtener_datos_handler,   //Handler function for data retrieval requests
+    .handler = get_data_handler,   //Handler function for data retrieval requests
 };
 //
 
@@ -38,7 +56,7 @@ httpd_handle_t start_webserver(){
     if(httpd_start(&httpd_server, &httpd_config) == ESP_OK){
         httpd_register_uri_handler(httpd_server, &root);            //Register handler for root URI
         httpd_register_uri_handler(httpd_server, &time_post);       //Register handler for time POST requests
-        httpd_register_uri_handler(httpd_server, &obtener_datos);   //Register handler for data retrieval requests
+        httpd_register_uri_handler(httpd_server, &get_data);   //Register handler for data retrieval requests
         return httpd_server;                                        //Return HTTP server handle
     } else{
         return NULL;
@@ -107,24 +125,24 @@ esp_err_t time_post_handler(httpd_req_t *req)
 
     return ESP_OK;
 }
-//Handles GET requests to "/obtener_datos" URI
-esp_err_t obtener_datos_handler(httpd_req_t *req)
+//Handles GET requests to "/get_data" URI
+esp_err_t get_data_handler(httpd_req_t *req)
 {
-    // Simulate example data (you can load real data from your source)
-    cJSON *datos = cJSON_CreateArray();
-    cJSON *dato1 = cJSON_CreateObject();
-    cJSON_AddStringToObject(dato1, "tiempo", "12:30:00");
-    cJSON_AddStringToObject(dato1, "potencia", "120");
-    cJSON_AddStringToObject(dato1, "temperaturaPF", "12°C");
-    cJSON_AddStringToObject(dato1, "temperaturaPC", "58°C");
-    cJSON_AddItemToArray(datos, dato1);
+    strncpy(measurements[data_n].tiempo, get_time(), TIME_ARRAY_SIZE); //Get current time and store it in the measurements array
+    strncpy(measurements[data_n].potencia, "100.00 W", POWER_ARRAY_SIZE);
+    sprintf(measurements[data_n].temperaturaPF, "%.2f °C", get_ntc_temperature_c(get_adc_voltage_mv_multisampling(ADC_UNIT_1, ADC_CHANNEL_0)));
+    strncpy(measurements[data_n].temperaturaPC, "80.00 °C", TEMP_ARRAY_SIZE);
+    data_n++;   //Increment data entries counter
 
-    cJSON *dato2 = cJSON_CreateObject();
-    cJSON_AddStringToObject(dato2, "tiempo", "12:35:00");
-    cJSON_AddStringToObject(dato2, "potencia", "130");
-    cJSON_AddStringToObject(dato2, "temperaturaPF", "13°C");
-    cJSON_AddStringToObject(dato2, "temperaturaPC", "59°C");
-    cJSON_AddItemToArray(datos, dato2);
+    cJSON *datos = cJSON_CreateArray();
+    for(int i = 0; i < data_n; i++){
+        cJSON *dato = cJSON_CreateObject();
+        cJSON_AddStringToObject(dato, "tiempo", measurements[i].tiempo);
+        cJSON_AddStringToObject(dato, "potencia", measurements[i].potencia);
+        cJSON_AddStringToObject(dato, "temperaturaPF", measurements[i].temperaturaPF);
+        cJSON_AddStringToObject(dato, "temperaturaPC", measurements[i].temperaturaPC);
+        cJSON_AddItemToArray(datos, dato);
+    }
 
     //Generate a JSON string from the data
     char *json_str = cJSON_PrintUnformatted(datos);

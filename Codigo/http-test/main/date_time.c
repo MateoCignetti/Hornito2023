@@ -2,6 +2,7 @@
 
 #define TIME_DELAY_MS 1000
 #define CUSTOM_TIME 1695687516  //Custom time value to set the system time.
+#define TIME_ARRAY_SIZE 100
 
 void setup_time(){
     setenv("TZ", "WART4WARST,J1/0,J365/25", 1); //Timezone setting for "WART4WARST" (Argentina Time).
@@ -29,8 +30,19 @@ void time_task(){
 
 void set_time(int time){
     time_t now = time;                              //Convert the time value to time_t type.
-    struct timeval custom_tv = { .tv_sec = time };  //Define timeval structure with specified time.
+    struct timeval custom_tv = { .tv_sec = now };  //Define timeval structure with specified time.
     settimeofday(&custom_tv, NULL);                 //Set the current time using timeval structure.
+}
+
+char* get_time(){
+    time_t now;
+    struct tm timeinfo;
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    char *strftime_buf = (char*)malloc(TIME_ARRAY_SIZE);
+    strftime(strftime_buf, TIME_ARRAY_SIZE, "%c", &timeinfo);
+    
+    return strftime_buf;
 }
 
 void create_time_task(){

@@ -2,9 +2,12 @@
 #define WEB_SERVER_H
 
 // Includes
+#include <string.h>
 #include "esp_http_server.h"
 #include "date_time.h"
-#include <time.h> // Just for testing purposes
+#include "cJSON.h"
+#include "adc.h"
+#include "ntc.h"
 //
 
 // Public function prototypes
