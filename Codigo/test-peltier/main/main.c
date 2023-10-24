@@ -1,6 +1,6 @@
 // Includes
-
-#include "adc.h"
+#include "peltier.h"
+#include "ntc.h"
 //
 
 // Defines
@@ -40,8 +40,9 @@ void app_main(void){
 
 // FreeRTOS Task create
 void tasks_create(){
-    create_adc_read_task();
-    create_decision_peltier();
+    //create_adc_read_task();
+    create_peltier_task();
+    void create_ntc_tasks();
 }
 //
 

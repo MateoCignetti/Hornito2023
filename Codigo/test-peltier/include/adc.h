@@ -6,18 +6,12 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_adc/adc_oneshot.h"
-#include "driver/gpio.h"
 #include "esp_log.h"
 #include <math.h>
 
 void adc1_init();
-void adc1_create_oneshot_unit();
-void adc1_channel0_config();
-void adc1_calibration();
-uint16_t get_adc1_c0_voltage_multisampling();
-void create_adc_read_task();
-void create_decision_peltier();
-void vTaskAdc1C0Read();
-void vTaskDecision();
+void adc2_init();
+uint16_t get_adc_voltage_mv_multisampling(adc_unit_t adc_unit, adc_channel_t adc_channel);
+void create_adc_tasks();
 
 #endif
