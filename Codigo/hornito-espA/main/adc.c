@@ -3,14 +3,18 @@
 // Defines
 #define ADC1_DESIRED_BITWIDTH ADC_BITWIDTH_12   // Defines the desired bitwidth for ADC1
 #define ADC2_DESIRED_BITWIDTH ADC_BITWIDTH_12   // Defines the desired bitwidth for ADC2
+
 #define ADC1_CONFIGURED_CHANNELS 4              // Defines the number of channels to be configured on ADC1
+                                                // Note: defines channels 0-N on ADC1, see pinout for exact pins
 #define ADC2_CONFIGURED_CHANNELS 0              // Defines the number of channels to be configured on ADC2
+                                                // Note: defines channels 0-N on ADC2, see pinout for exact pins
+
 #define MULTISAMPLE_SIZE 64                     // Defines the number of ADC readings to be taken in the multisampling function
 #define MULTISAMPLE_DELAY_MS 1                  // Defines the delay between each ADC reading in the multisampling function
-#define ADC_READING_TASK_DELAY_MS 2000          // Must not be less than (MULTISAMPLE_SIZE * MULTISAMPLE_DELAY_MS)
-#define ADC_DEBUGGING_TASK_DELAY_MS 5000        // Defines the period of the ADC debugging task
 
-#define ADC_DEBUGGING_TASK 0                    // Defines and creates a task that reads all configured channels every 5 seconds
+#define ADC_DEBUGGING_TASK 0                    // Defines and creates a task that reads all configured channels every 5 seconds.
+                                                // Note: This task is only used for debugging and should not be used in production
+#define ADC_DEBUGGING_TASK_DELAY_MS 5000        // Defines the period of the ADC debugging task mentioned above
 
 // ESP-LOG Tags
 const static char* TAG_ADC = "ADC";
@@ -27,6 +31,8 @@ static TaskHandle_t xTaskAdcDebug_handle;
 //
 
 // Private function prototypes
+static void adc1_init();
+static void adc2_init();
 static void adc1_create_oneshot_unit();
 static void adc1_calibration();
 static void adc1_configure_channels();
@@ -39,6 +45,11 @@ static void vTaskReadAllChannels();
 //
 
 // Functions
+void adc_init(){
+    adc1_init();
+    adc2_init();
+}
+
 void adc1_init(){
     if(ADC1_CONFIGURED_CHANNELS > 0){
         adc1_create_oneshot_unit();
@@ -47,7 +58,7 @@ void adc1_init(){
 
         ESP_LOGI(TAG_ADC, "ADC1 Initialized");
     } else{
-        ESP_LOGI(TAG_ADC, "ADC1 not initialized, no channels configured");
+        ESP_LOGI(TAG_ADC, "ADC1 Not initialized, no channels configured");
     }
 }
 
@@ -126,13 +137,13 @@ static void adc2_configure_channels(){
     }
 }
 
-uint16_t get_adc_voltage_mv_multisampling(adc_unit_t adc_unit, adc_channel_t adc_channel){
+int get_adc_voltage_mv(adc_unit_t ADC_UNIT, adc_channel_t ADC_CHANNEL){
     adc_oneshot_unit_handle_t adc_handle = NULL;
     adc_cali_handle_t adc_cali_handle = NULL;
-    if(adc_unit == ADC_UNIT_1 && adc_channel < ADC1_CONFIGURED_CHANNELS){
+    if(ADC_UNIT == ADC_UNIT_1 && ADC_CHANNEL < ADC1_CONFIGURED_CHANNELS){
         adc_handle = adc1_handle;
         adc_cali_handle = adc1_cali_handle;
-    } else if(adc_unit == ADC_UNIT_2 && adc_channel < ADC2_CONFIGURED_CHANNELS){
+    } else if(ADC_UNIT == ADC_UNIT_2 && ADC_CHANNEL < ADC2_CONFIGURED_CHANNELS){
         adc_handle = adc2_handle;
         adc_cali_handle = adc2_cali_handle;
     } else{
@@ -140,19 +151,39 @@ uint16_t get_adc_voltage_mv_multisampling(adc_unit_t adc_unit, adc_channel_t adc
         return 0;
     }
 
-    uint16_t adc_raw = 0;
-    uint32_t adc_raw_sum = 0;
-    uint16_t adc_voltage = 0;
+    int adc_voltage_mv = 0;
+    adc_oneshot_get_calibrated_result(adc_handle, adc_cali_handle, ADC_CHANNEL, &adc_voltage_mv);
+    
+    return adc_voltage_mv;
+}
+
+int get_adc_voltage_mv_multisampling(adc_unit_t ADC_UNIT, adc_channel_t ADC_CHANNEL){
+    adc_oneshot_unit_handle_t adc_handle = NULL;
+    adc_cali_handle_t adc_cali_handle = NULL;
+    if(ADC_UNIT == ADC_UNIT_1 && ADC_CHANNEL < ADC1_CONFIGURED_CHANNELS){
+        adc_handle = adc1_handle;
+        adc_cali_handle = adc1_cali_handle;
+    } else if(ADC_UNIT == ADC_UNIT_2 && ADC_CHANNEL < ADC2_CONFIGURED_CHANNELS){
+        adc_handle = adc2_handle;
+        adc_cali_handle = adc2_cali_handle;
+    } else{
+        ESP_LOGE(TAG_ADC, "Invalid ADC unit or channel");
+        return 0;
+    }
+
+    int adc_raw = 0;
+    int adc_raw_sum = 0;
+    int adc_voltage_mv = 0;
     
     for(int i = 0; i < MULTISAMPLE_SIZE; i++){
-        adc_oneshot_get_calibrated_result(adc_handle, adc_cali_handle, adc_channel, &adc_raw);
+        adc_oneshot_get_calibrated_result(adc_handle, adc_cali_handle, ADC_CHANNEL, &adc_raw);
         adc_raw_sum += adc_raw;
         vTaskDelay(pdMS_TO_TICKS(MULTISAMPLE_DELAY_MS));
     }
 
-    adc_voltage = adc_raw_sum / MULTISAMPLE_SIZE;
+    adc_voltage_mv = adc_raw_sum / MULTISAMPLE_SIZE;
     
-    return adc_voltage;
+    return adc_voltage_mv;
 }
 
 void create_adc_tasks(){
@@ -174,16 +205,16 @@ static void vTaskReadAllChannels(){  //Only used for debugging
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while(true){
         for(int i = 0; i < ADC1_CONFIGURED_CHANNELS; i++){
-            uint16_t adc_raw = 0;
-            uint16_t adc_voltage = 0;
+            int adc_raw = 0;
+            int adc_voltage = 0;
             adc_oneshot_read(adc1_handle, i, &adc_raw);
             adc_cali_raw_to_voltage(adc1_cali_handle, adc_raw, &adc_voltage);
             ESP_LOGI(TAG_ADC, "ADC1-C%d: %d mV", i, adc_voltage);
-        }uint16_t
+        }int
 
         for(int i = 0; i < ADC2_CONFIGURED_CHANNELS; i++){
-            uint16_t adc_raw = 0;
-            uint16_t adc_voltage = 0;
+            int adc_raw = 0;
+            int adc_voltage = 0;
             adc_oneshot_read(adc2_handle, i, &adc_raw);
             adc_cali_raw_to_voltage(adc2_cali_handle, adc_raw, &adc_voltage);
             ESP_LOGI(TAG_ADC, "ADC2-C%d: %d mV", i, adc_voltage);

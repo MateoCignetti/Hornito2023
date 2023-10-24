@@ -19,7 +19,7 @@ const static char* TAG_NTC = "NTC";
 static void vTaskReadNTCs();
 
 // Functions
-float ntc_get_resistance(uint16_t adc_reading_mv){
+float get_ntc_temperature_c(uint16_t adc_reading_mv){
     float adc_voltage_v = adc_reading_mv / 1000.0;
     //float ntc_resistance_ko = (DIVIDER_RESISTOR_O / 1000 * ((SUPPLY_VOLTAGE_V * 1000) - adc_reading_mv)) / adc_reading_mv;    //Only used for debugging
     //printf("NTC resistance: %.2f\n kOhm", ntc_resistance_ko);                                                                 //Only used for debugging
@@ -40,7 +40,7 @@ void create_ntc_tasks(){
 static void vTaskReadNTCs(){
     TickType_t xLastWakeTime;
     while(true){
-        ESP_LOGI(TAG_NTC, "NTC1: %.2f °C", ntc_get_resistance(get_adc_voltage_mv_multisampling(ADC_UNIT_1, ADC_CHANNEL_0)));
+        ESP_LOGI(TAG_NTC, "NTC1: %.2f °C", get_ntc_temperature_c(get_adc_voltage_mv_multisampling(ADC_UNIT_1, ADC_CHANNEL_0)));
         vTaskDelayUntil(&xLastWakeTime, NTC_READ_TASK_DELAY_MS / portTICK_PERIOD_MS);
     }
 }
