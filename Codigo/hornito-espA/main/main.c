@@ -33,7 +33,7 @@ void tasks_create();
 void app_main(void){
     adc_init();
     //setup_dimmer_isr();
-    tasks_create();
+    //tasks_create();
 }
 //
 
@@ -44,7 +44,7 @@ void app_main(void){
 // FreeRTOS Task create
 void tasks_create(){
     //create_adc_tasks();
-    create_ntc_tasks();
+    //create_ntc_tasks();
     //create_dimmer_task();
 }
 //

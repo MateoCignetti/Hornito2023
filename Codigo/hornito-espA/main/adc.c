@@ -3,18 +3,19 @@
 // Defines
 #define ADC1_DESIRED_BITWIDTH ADC_BITWIDTH_12   // Defines the desired bitwidth for ADC1
 #define ADC2_DESIRED_BITWIDTH ADC_BITWIDTH_12   // Defines the desired bitwidth for ADC2
-
-#define ADC1_CONFIGURED_CHANNELS 4              // Defines the number of channels to be configured on ADC1
-                                                // Note: defines channels 0-N on ADC1, see pinout for exact pins
-#define ADC2_CONFIGURED_CHANNELS 0              // Defines the number of channels to be configured on ADC2
-                                                // Note: defines channels 0-N on ADC2, see pinout for exact pins
-
 #define MULTISAMPLE_SIZE 64                     // Defines the number of ADC readings to be taken in the multisampling function
 #define MULTISAMPLE_DELAY_MS 1                  // Defines the delay between each ADC reading in the multisampling function
 
 #define ADC_DEBUGGING_TASK 0                    // Defines and creates a task that reads all configured channels every 5 seconds.
                                                 // Note: This task is only used for debugging and should not be used in production
 #define ADC_DEBUGGING_TASK_DELAY_MS 5000        // Defines the period of the ADC debugging task mentioned above
+
+// Global variables
+static const int ADC1_CHANNELS[] = {ADC_CHANNEL_0, ADC_CHANNEL_3, ADC_CHANNEL_4, ADC_CHANNEL_5}; // Defines the channels to be configured on ADC1
+static const int ADC2_CHANNELS[] = {};                                                           // Defines the channels to be configured on ADC2
+static const int ADC1_CHANNEL_COUNT = sizeof(ADC1_CHANNELS) / sizeof(int);
+static const int ADC2_CHANNEL_COUNT = sizeof(ADC2_CHANNELS) / sizeof(int);
+//
 
 // ESP-LOG Tags
 const static char* TAG_ADC = "ADC";
@@ -51,7 +52,7 @@ void adc_init(){
 }
 
 void adc1_init(){
-    if(ADC1_CONFIGURED_CHANNELS > 0){
+    if(ADC1_CHANNEL_COUNT > 0){
         adc1_create_oneshot_unit();
         adc1_calibration();
         adc1_configure_channels();
@@ -63,7 +64,7 @@ void adc1_init(){
 }
 
 void adc2_init(){
-    if(ADC2_CONFIGURED_CHANNELS > 0){
+    if(ADC2_CHANNEL_COUNT > 0){
         adc2_create_oneshot_unit();
         adc2_calibration();
         adc2_configure_channels();
@@ -116,34 +117,34 @@ static void adc2_calibration(){
 }
 
 static void adc1_configure_channels(){
-    adc_oneshot_chan_cfg_t adc1_channel_configs[ADC1_CONFIGURED_CHANNELS];
-    for(int i = 0; i < ADC1_CONFIGURED_CHANNELS; i++){
+    adc_oneshot_chan_cfg_t adc1_channel_configs[ADC1_CHANNEL_COUNT];
+    for(int i = 0; i < ADC1_CHANNEL_COUNT; i++){
         adc1_channel_configs[i].atten = ADC_ATTEN_DB_11;
         adc1_channel_configs[i].bitwidth = ADC1_DESIRED_BITWIDTH;
 
-        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, i, &adc1_channel_configs[i]));
-        ESP_LOGI(TAG_ADC, "ADC1 Channel %d configured", i);
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, ADC1_CHANNELS[i], &adc1_channel_configs[i]));
+        ESP_LOGI(TAG_ADC, "ADC1 Channel %d configured", ADC1_CHANNELS[i]);
     }
 }
 
 static void adc2_configure_channels(){
-    adc_oneshot_chan_cfg_t adc2_channel_configs[ADC2_CONFIGURED_CHANNELS];
-    for(int i = 0; i < ADC2_CONFIGURED_CHANNELS; i++){
+    adc_oneshot_chan_cfg_t adc2_channel_configs[ADC2_CHANNEL_COUNT];
+    for(int i = 0; i < ADC2_CHANNEL_COUNT; i++){
         adc2_channel_configs[i].atten = ADC_ATTEN_DB_11;
         adc2_channel_configs[i].bitwidth = ADC2_DESIRED_BITWIDTH;
 
-        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc2_handle, i, &adc2_channel_configs[i]));
-        ESP_LOGI(TAG_ADC, "ADC2 Channel %d configured", i);
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc2_handle, ADC2_CHANNELS[i], &adc2_channel_configs[i]));
+        ESP_LOGI(TAG_ADC, "ADC2 Channel %d configured", ADC2_CHANNELS[i]);
     }
 }
 
 int get_adc_voltage_mv(adc_unit_t ADC_UNIT, adc_channel_t ADC_CHANNEL){
     adc_oneshot_unit_handle_t adc_handle = NULL;
     adc_cali_handle_t adc_cali_handle = NULL;
-    if(ADC_UNIT == ADC_UNIT_1 && ADC_CHANNEL < ADC1_CONFIGURED_CHANNELS){
+    if(ADC_UNIT == ADC_UNIT_1){
         adc_handle = adc1_handle;
         adc_cali_handle = adc1_cali_handle;
-    } else if(ADC_UNIT == ADC_UNIT_2 && ADC_CHANNEL < ADC2_CONFIGURED_CHANNELS){
+    } else if(ADC_UNIT == ADC_UNIT_2){
         adc_handle = adc2_handle;
         adc_cali_handle = adc2_cali_handle;
     } else{
@@ -160,10 +161,10 @@ int get_adc_voltage_mv(adc_unit_t ADC_UNIT, adc_channel_t ADC_CHANNEL){
 int get_adc_voltage_mv_multisampling(adc_unit_t ADC_UNIT, adc_channel_t ADC_CHANNEL){
     adc_oneshot_unit_handle_t adc_handle = NULL;
     adc_cali_handle_t adc_cali_handle = NULL;
-    if(ADC_UNIT == ADC_UNIT_1 && ADC_CHANNEL < ADC1_CONFIGURED_CHANNELS){
+    if(ADC_UNIT == ADC_UNIT_1){
         adc_handle = adc1_handle;
         adc_cali_handle = adc1_cali_handle;
-    } else if(ADC_UNIT == ADC_UNIT_2 && ADC_CHANNEL < ADC2_CONFIGURED_CHANNELS){
+    } else if(ADC_UNIT == ADC_UNIT_2){
         adc_handle = adc2_handle;
         adc_cali_handle = adc2_cali_handle;
     } else{
