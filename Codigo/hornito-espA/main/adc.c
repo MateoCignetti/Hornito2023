@@ -8,7 +8,7 @@
 
 #define ADC_DEBUGGING_TASK 0                    // Defines and creates a task that reads all configured channels every 5 seconds.
                                                 // Note: This task is only used for debugging and should not be used in production
-#define ADC_DEBUGGING_TASK_DELAY_MS 5000        // Defines the period of the ADC debugging task mentioned above
+#define ADC_DEBUGGING_TASK_DELAY_MS 1000        // Defines the period of the ADC debugging task mentioned above
 
 // Global variables
 static const int ADC1_CHANNELS[] = {ADC_CHANNEL_0, ADC_CHANNEL_3, ADC_CHANNEL_4, ADC_CHANNEL_5}; // Defines the channels to be configured on ADC1
@@ -172,9 +172,9 @@ int get_adc_voltage_mv_multisampling(adc_unit_t ADC_UNIT, adc_channel_t ADC_CHAN
         return 0;
     }
 
-    int adc_raw = 0;
-    int adc_raw_sum = 0;
-    int adc_voltage_mv = 0;
+    int adc_raw = 0;            //Defined as an int because VSCODE doesn't like uint16_t
+    int adc_raw_sum = 0;        //Defined as an int because VSCODE doesn't like uint32_t
+    int adc_voltage_mv = 0;     //Defined as an int because VSCODE doesn't like uint16_t
     
     for(int i = 0; i < MULTISAMPLE_SIZE; i++){
         adc_oneshot_get_calibrated_result(adc_handle, adc_cali_handle, ADC_CHANNEL, &adc_raw);
@@ -184,7 +184,7 @@ int get_adc_voltage_mv_multisampling(adc_unit_t ADC_UNIT, adc_channel_t ADC_CHAN
 
     adc_voltage_mv = adc_raw_sum / MULTISAMPLE_SIZE;
     
-    return adc_voltage_mv;
+    return adc_voltage_mv;      //Defined as an int because VSCODE doesn't like uint16_t
 }
 
 void create_adc_tasks(){
@@ -205,20 +205,16 @@ void create_adc_tasks(){
 static void vTaskReadAllChannels(){  //Only used for debugging
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while(true){
-        for(int i = 0; i < ADC1_CONFIGURED_CHANNELS; i++){
-            int adc_raw = 0;
+        for(int i = 0; i < ADC1_CHANNEL_COUNT; i++){
             int adc_voltage = 0;
-            adc_oneshot_read(adc1_handle, i, &adc_raw);
-            adc_cali_raw_to_voltage(adc1_cali_handle, adc_raw, &adc_voltage);
-            ESP_LOGI(TAG_ADC, "ADC1-C%d: %d mV", i, adc_voltage);
-        }int
+            adc_oneshot_get_calibrated_result(adc1_handle, adc1_cali_handle, ADC1_CHANNELS[i], &adc_voltage);
+            ESP_LOGI(TAG_ADC, "ADC1-C%d: %d mV", ADC1_CHANNELS[i], adc_voltage);
+        }
 
-        for(int i = 0; i < ADC2_CONFIGURED_CHANNELS; i++){
-            int adc_raw = 0;
+        for(int i = 0; i < ADC2_CHANNEL_COUNT; i++){
             int adc_voltage = 0;
-            adc_oneshot_read(adc2_handle, i, &adc_raw);
-            adc_cali_raw_to_voltage(adc2_cali_handle, adc_raw, &adc_voltage);
-            ESP_LOGI(TAG_ADC, "ADC2-C%d: %d mV", i, adc_voltage);
+            adc_oneshot_get_calibrated_result(adc2_handle, adc2_cali_handle, ADC2_CHANNELS[i], &adc_voltage);
+            ESP_LOGI(TAG_ADC, "ADC2-C%d: %d mV", ADC2_CHANNELS[i], adc_voltage);
         }
 
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(ADC_DEBUGGING_TASK_DELAY_MS));
