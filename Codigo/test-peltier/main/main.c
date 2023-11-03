@@ -1,4 +1,5 @@
 // Includes
+#include "adc.h"
 #include "peltier.h"
 #include "ntc.h"
 //
@@ -29,7 +30,7 @@ void tasks_create();
 
 // Main
 void app_main(void){
-    adc1_init();
+    adc_init();
     tasks_create();
 }
 //
@@ -42,7 +43,7 @@ void app_main(void){
 void tasks_create(){
     //create_adc_read_task();
     create_peltier_task();
-    void create_ntc_tasks();
+    create_ntc_tasks();
 }
 //
 

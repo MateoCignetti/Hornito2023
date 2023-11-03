@@ -1,13 +1,14 @@
 #include "ntc.h"
 
 // Defines
-#define NTC_READ_TASK_DELAY_MS 1000     // Defines the period of the NTC reading task
+#define NTC_READ_TASK_DELAY_MS 2000         // Defines the period of the NTC reading task
 
 // Constant values
-const int DIVIDER_RESISTOR_O = 46690;   // Resistance in Ohms of the resistor in series with the NTC
-const float SUPPLY_VOLTAGE_V = 3.324;   // Supply voltage in Volts
-const float A_NTC = 0.1609525156;       // Steinhart-Hart coefficient A
-const float B_NTC = 3977.1932;          // Steinhart-Hart coefficient B
+const int DIVIDER_RESISTOR_O = 100000;      // Resistance resistor in series with the NTC (Ohm)
+const float SUPPLY_VOLTAGE_V = 3.3;         // Supply voltage (V)
+const float BETA_NTC = 3813.902828;         // Thermistor beta coefficient (K)
+const float T0_NTC = 25 + 273.15;           // Reference temperature (K)           
+const float R0_NTC = 100000;                // Reference resistance at reference temperature (Ohm)
 
 // Handles
 static TaskHandle_t xTaskAdcDebug_handle;
@@ -19,12 +20,14 @@ const static char* TAG_NTC = "NTC";
 static void vTaskReadNTCs();
 
 // Functions
-float ntc_get_resistance(uint16_t adc_reading_mv){
-    float adc_voltage_v = adc_reading_mv / 1000.0;
-    //float ntc_resistance_ko = (DIVIDER_RESISTOR_O / 1000 * ((SUPPLY_VOLTAGE_V * 1000) - adc_reading_mv)) / adc_reading_mv;    //Only used for debugging
-    //printf("NTC resistance: %.2f\n kOhm", ntc_resistance_ko);                                                                 //Only used for debugging
-    float ntc_temperature_c = (B_NTC / log((DIVIDER_RESISTOR_O* ( (SUPPLY_VOLTAGE_V / adc_voltage_v) - 1) ) / A_NTC)) - 273.15;
-    return ntc_temperature_c;
+float get_ntc_temperature_c(int adc_reading_mv){
+    float adc_reading_v = adc_reading_mv / 1000.0;
+    //printf("ADC reading: %.2f V\n", adc_reading_v); //Only used for debugging
+    float ntc_resistance_o =  ((SUPPLY_VOLTAGE_V * DIVIDER_RESISTOR_O)/adc_reading_v) - DIVIDER_RESISTOR_O; //Calculates the resistance of the NTC in Ohms using the voltage divider formula
+    //printf("NTC resistance: %.2f Ohm\n", ntc_resistance_o);  //Only used for debugging
+    float num = BETA_NTC * T0_NTC;
+    float den = BETA_NTC + (T0_NTC * log(ntc_resistance_o / R0_NTC));       
+    return (num/den) - 273.15;
 }
 
 void create_ntc_tasks(){
@@ -38,9 +41,9 @@ void create_ntc_tasks(){
 }
 
 static void vTaskReadNTCs(){
-    TickType_t xLastWakeTime;
+    TickType_t xLastWakeTime = xTaskGetTickCount();
     while(true){
-        ESP_LOGI(TAG_NTC, "NTC1: %.2f °C", ntc_get_resistance(get_adc_voltage_mv_multisampling(ADC_UNIT_1, ADC_CHANNEL_0)));
-        vTaskDelayUntil(&xLastWakeTime, NTC_READ_TASK_DELAY_MS / portTICK_PERIOD_MS);
+        ESP_LOGI(TAG_NTC, "NTC1: %.2f °C", get_ntc_temperature_c(get_adc_voltage_mv_multisampling(ADC_UNIT_1, ADC_CHANNEL_0)));
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(NTC_READ_TASK_DELAY_MS));
     }
 }
