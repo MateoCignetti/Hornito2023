@@ -37,9 +37,33 @@
         tr:nth-child(even) {
             background-color: #f2f2f2;
         }
+
+        .boton-inicio {
+            margin: 20px;
+            padding: 10px 20px;
+            background-color: #4caf50;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            position: fixed;
+            top: 10px;
+            right: 15px;
+        }
+
+        .boton-inicio:hover {
+            background-color: #45a049;
+        }
+        
     </style>
 </head>
 <body>
+    <button class="boton-inicio" onclick="enviarSegundosDesdeEpoch()">Inicio</button>
+
+    <form id="formulario-segundos" action="/post_time" method="post">
+        <input type="hidden" name="segundos_desde_epoch" id="campo-segundos" value="">
+    </form>
+
     <h2>Medición de Conductividad Térmica</h2>
     
     <!-- Crear la tabla -->
@@ -58,6 +82,19 @@
     </table>
 
     <script>
+        // Función para enviar los segundos desde el EPOCH al servidor
+        function enviarSegundosDesdeEpoch() {
+            // Obtener la cantidad de segundos desde el EPOCH
+            var segundosDesdeEpoch = Math.floor(Date.now() / 1000);
+
+            // Establecer los segundos desde el EPOCH como el valor del campo oculto
+            document.getElementById("campo-segundos").value = segundosDesdeEpoch;
+
+            // Envía el formulario oculto
+            document.getElementById("formulario-segundos").submit();
+        }
+        
+        
         // Función para realizar una solicitud al servidor y actualizar la tabla
         function actualizarTabla() {
             var xhttp = new XMLHttpRequest();
@@ -85,12 +122,15 @@
                     });
                 }
             };
+
             xhttp.open("GET", "/get_data", true);
             xhttp.send();
         }
 
+
+
         // Actualizar la tabla cada 5 segundos (ajusta el intervalo según tus necesidades)
-        setInterval(actualizarTabla, 5000);
+        setInterval(actualizarTabla, 1000);
     </script>
 </body>
 </html>

@@ -7,6 +7,8 @@
 #define POWER_ARRAY_SIZE 100 // Maximum length of power string.
 #define TEMP_ARRAY_SIZE 100  // Maximum length of temperature string.
 
+#define UPDATE_DATA_DELAY_MS 5000  //Defines the period of updating data task
+
 // Typedefs
 typedef struct{
     char tiempo[TIME_ARRAY_SIZE];
@@ -16,10 +18,14 @@ typedef struct{
 } Measurement;
 //
 
+// Handles
+static TaskHandle_t xTaskUpdateData_handle;
+
 // Private function prototypes
 static esp_err_t root_get_handler(httpd_req_t *req);        //Handler for GET requests to the root URI.
 static esp_err_t time_post_handler(httpd_req_t *req);       //Handler for POST requests to "/post_time" URI.
 static esp_err_t get_data_handler(httpd_req_t *req);   //Handler for GET requests to "/get_data" URI.
+static void vTaskUpdateData();
 //
 
 // Global variables
@@ -48,6 +54,28 @@ static const httpd_uri_t get_data = {
 //
 
 // Functions
+static void create_data_tasks(){
+    xTaskCreatePinnedToCore(vTaskUpdateData,
+                            "vTaskUpdateData",
+                            configMINIMAL_STACK_SIZE * 5,
+                            NULL,
+                            tskIDLE_PRIORITY + 2,
+                            &xTaskUpdateData_handle,
+                            0);
+}
+
+static void vTaskUpdateData(){
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    while(true){
+        strncpy(measurements[data_n].tiempo, get_time(), TIME_ARRAY_SIZE); //Get current time and store it in the measurements array
+        strncpy(measurements[data_n].potencia, "100.00 W", POWER_ARRAY_SIZE);
+        sprintf(measurements[data_n].temperaturaPF, "%.2f °C", get_ntc_temperature_c(get_adc_voltage_mv_multisampling(ADC_UNIT_1, ADC_CHANNEL_0)));
+        strncpy(measurements[data_n].temperaturaPC, "80.00 °C", TEMP_ARRAY_SIZE);
+        data_n++;   //Increment data entries counter
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(UPDATE_DATA_DELAY_MS));
+    }
+}
+
 httpd_handle_t start_webserver(){
     httpd_handle_t httpd_server = NULL;
     httpd_config_t httpd_config = HTTPD_DEFAULT_CONFIG();   //Default HTTP server configuration
@@ -117,23 +145,19 @@ esp_err_t time_post_handler(httpd_req_t *req)
         // Puedes extraer y procesar la hora actual aquí
         remaining -= ret;                           // Update remaining bytes count
     }
-
+    create_data_tasks();
     //After processing data, send a 303 See Other redirect response
     httpd_resp_set_status(req, "303 See Other");
     httpd_resp_set_hdr(req, "Location", "/");    //Redirect to root URI
     httpd_resp_send(req, NULL, 0);               //Send redirect response
+
+    
 
     return ESP_OK;
 }
 //Handles GET requests to "/get_data" URI
 esp_err_t get_data_handler(httpd_req_t *req)
 {
-    strncpy(measurements[data_n].tiempo, get_time(), TIME_ARRAY_SIZE); //Get current time and store it in the measurements array
-    strncpy(measurements[data_n].potencia, "100.00 W", POWER_ARRAY_SIZE);
-    sprintf(measurements[data_n].temperaturaPF, "%.2f °C", get_ntc_temperature_c(get_adc_voltage_mv_multisampling(ADC_UNIT_1, ADC_CHANNEL_0)));
-    strncpy(measurements[data_n].temperaturaPC, "80.00 °C", TEMP_ARRAY_SIZE);
-    data_n++;   //Increment data entries counter
-
     cJSON *datos = cJSON_CreateArray();
     for(int i = 0; i < data_n; i++){
         cJSON *dato = cJSON_CreateObject();
