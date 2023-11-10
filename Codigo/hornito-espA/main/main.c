@@ -27,8 +27,8 @@
 
 // Main
 void app_main(void){
-    adc_init();
-    //setup_dimmer_isr();
+    //adc_init();
+    setup_dimmer_isr();
     create_tasks();
 }
 //

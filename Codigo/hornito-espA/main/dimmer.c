@@ -1,9 +1,9 @@
 #include "dimmer.h"
 
 // Defines
-#define PIN_IN GPIO_NUM_32
+#define PIN_IN GPIO_NUM_34
 #define PIN_OUT GPIO_NUM_33
-#define DELAY_DIMMER_MS 7
+#define DELAY_DIMMER_US 9500
 #define DIMMER_SEMAPHORE_TIMEOUT_MS 11
 //
 
@@ -47,7 +47,7 @@ void vTaskDimmer(){
     while(true){
         if(xSemaphoreTake(xDimmerSemaphore_handle, pdMS_TO_TICKS(DIMMER_SEMAPHORE_TIMEOUT_MS))){
             //ESP_LOGI(TAG_DIMMER, "Semaphore taken anashe");
-            ets_delay_us(DELAY_DIMMER_MS*1000);
+            ets_delay_us(DELAY_DIMMER_US);
             //vTaskDelay(pdMS_TO_TICKS(DELAY_DIMMER_MS));
             gpio_set_level(PIN_OUT, 1);
             ets_delay_us(10);
