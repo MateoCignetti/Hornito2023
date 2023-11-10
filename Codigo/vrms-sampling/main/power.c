@@ -5,25 +5,33 @@
 #define SAMPLING_PERIOD_US (1000000 / SAMPLING_FREQUENCY)   // Sampling period in microseconds
 #define PIN_IN GPIO_NUM_34
 
+#define SAMPLE_READING_DELAY_MS 25
+
+#define VOLTAGE_DIVIDER_RATIO 6.86
+#define DIODE_FORWARD_VOLTAGE 1.1
+#define TRANSORMER_RATIO 16.58
+
 // Global variables
+static const char* TAG_POWER = "POWER";
+
 static int current_samples = 0;         // Current sample index
 static float samples[SAMPLES_AMMOUNT];    // Array of samples
 static esp_timer_handle_t sampling_timer_handle = NULL;
 static bool samples_taken = false;
+
+QueueHandle_t xQueuePower;
+SemaphoreHandle_t xSemaphorePower;
 //
 
 // Function prototypes
-
 void create_sampling_timer();
 void sampling_timer_callback();
 void create_power_tasks();
 void vTaskPower(void *pvParameters);
-void print_samples();
+void scale_samples();
 //
 
 // Functions
-
-
 void create_sampling_timer() {
     //esp_timer_init();
     esp_timer_create_args_t sampling_timer_args = {
@@ -68,28 +76,60 @@ void sampling_timer_callback(){
     }
 }
 
-void print_samples(){
+void scale_samples(){
     for(int i = 0; i < SAMPLES_AMMOUNT; i++){
         samples[i] /= 1000.0;
         if(samples[i] < 0.15){
             samples[i] = 0;
         } else{
-            samples[i] = (samples[i] * 6.86 + 1.1) * 16.58;
+            samples[i] = (samples[i] * VOLTAGE_DIVIDER_RATIO + DIODE_FORWARD_VOLTAGE) * TRANSORMER_RATIO;
         }
         printf("%.2f\n",samples[i]);
     }
 }
 
+float getVrms(int delay_steps){
+    float sum = 0;
+
+    for(int i = 0; i < SAMPLES_AMMOUNT; i++){
+        if(i < delay_steps || (i > (SAMPLES_AMMOUNT/2) && i < (SAMPLES_AMMOUNT/2) + delay_steps)){
+            continue;
+        } else{
+            printf("%d\n", i);
+            sum += pow(samples[i], 2);
+        }
+    }
+    printf("Sum: %.2f\n", sum);
+    sum /= SAMPLES_AMMOUNT;
+    return sqrt(sum);
+}
+
 void create_power_tasks(){
-    xTaskCreate(&vTaskPower, "Power read task", 2048, NULL, 5, NULL);
+    xTaskCreatePinnedToCore(&vTaskPower, "Power read task", 2048, NULL, 5, NULL, 0);
 }
 
 void vTaskPower(void *pvParameters){
-    create_sampling_timer();
-    while(!samples_taken){
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    xQueuePower = xQueueCreate(1, sizeof(float));
+    xSemaphorePower = xSemaphoreCreateBinary();
+
+    while(true){
+        if(xSemaphoreTake(xSemaphorePower, portMAX_DELAY)){
+            samples_taken = false;
+            ESP_LOGI(TAG_POWER, "Taking samples\n");
+            create_sampling_timer();
+            while(!samples_taken){
+                vTaskDelay(SAMPLE_READING_DELAY_MS);
+            }
+            scale_samples();
+            float vrms = getVrms(20);
+            if(xQueueSend(xQueuePower, &vrms, portMAX_DELAY) != pdPASS){
+                ESP_LOGE(TAG_POWER, "Error sending vrms to queue\n");
+            }
+        }
     }
-    print_samples();
+
+    scale_samples();
+    printf("Vrms: %.2f\n", getVrms(20));
     vTaskDelete(NULL);
 }
 //
