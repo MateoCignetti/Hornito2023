@@ -55,6 +55,7 @@ void vTaskDimmer(){
     while(true){
         if(xSemaphoreTake(xDimmerSemaphore_handle, pdMS_TO_TICKS(DIMMER_SEMAPHORE_TIMEOUT_MS))){
             //ESP_LOGI(TAG_DIMMER, "Semaphore taken anashe");
+            //ESP_LOGI(TAG_DIMMER, "Delay microseconds: %d", dimmer_delay_us);
             ets_delay_us(dimmer_delay_us);
             //vTaskDelay(pdMS_TO_TICKS(DELAY_DIMMER_MS));
             gpio_set_level(PIN_OUT, 1);

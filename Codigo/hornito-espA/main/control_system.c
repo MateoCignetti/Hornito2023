@@ -35,15 +35,18 @@ void create_control_system_task(){
 static void vTaskControlSystem(){
     float temperature = 25.0;
     TickType_t xLastWakeTime = xTaskGetTickCount();
+    int dimmer_delay_us = 9500;
     while (true) {
         temperature = get_ntc_temperature_c(get_adc_voltage_mv_multisampling(ADC_UNIT_1, ADC_CHANNEL_0));
         ESP_LOGI(TAG_CONTROL, "NTC1: %.2f °C", temperature);
         if (temperature < setPointTemperature) {
-            set_dimmer_delay(1000);
-            
+            dimmer_delay_us = 3000;  
         } else if (temperature > setPointTemperature) {
-            set_dimmer_delay(9500);
+            dimmer_delay_us = 9500;
         }
+        set_dimmer_delay(dimmer_delay_us);
+        ESP_LOGI(TAG_CONTROL, "Delay microseconds: %d", dimmer_delay_us);
+
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));
     }
 }
