@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8">                                      
     <title>Tabla HTML Estilizada con Datos</title>
     <style>
         body {
@@ -48,20 +48,39 @@
             cursor: pointer;
             position: fixed;
             top: 10px;
-            right: 15px;
+            left: 15px;
         }
 
         .boton-inicio:hover {
             background-color: #45a049;
         }
+
+        .boton-apagado {
+            margin: 20px;
+            padding: 10px 20px;
+            background-color: #af4c4c;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            position: fixed;
+            top: 10px;
+            right: 15px;
+        }
+
+        .boton-apagado:hover {
+            background-color: #a04545;
+        }
         
     </style>
 </head>
 <body>
-    <button class="boton-inicio" onclick="enviarSegundosDesdeEpoch()">Inicio</button>
+    <button class="boton-inicio" onclick="enviarSegundosDesdeEpoch()">Inicio</button>        <!-- Botón de inicio -->
+
+    <button class="boton-apagado" onclick="guardarApagar()">Guardar y Finalizar</button>     <!-- Botón de guardar y finalizar -->
 
     <form id="formulario-segundos" action="/post_time" method="post">
-        <input type="hidden" name="segundos_desde_epoch" id="campo-segundos" value="">
+        <input type="hidden" name="segundos_desde_epoch" id="campo-segundos" value="">       <!-- Campo oculto para enviar segundos desde el EPOCH -->
     </form>
 
     <h2>Medición de Conductividad Térmica</h2>
@@ -77,7 +96,7 @@
             </tr>
         </thead>
         <tbody id="tabla-datos">
-            <!-- Aquí se agregarán las filas con datos dinámicamente -->
+            <!-- Aquí se agregarán las filas con datos dinámicamente [actualizarTabla()] -->
         </tbody>
     </table>
 
@@ -94,10 +113,34 @@
             document.getElementById("formulario-segundos").submit();
         }
         
-        
+        // Función para guardar y apagar el sistema
+        function guardarApagar(){
+            // Crear una nueva solicitud XMLHttpRequest
+            var xhttp = new XMLHttpRequest();
+            // Configurar la función de devolución de llamada cuando el estado de la solicitud cambie
+            xhttp.onreadystatechange = function() {
+                if (this.readyState == 4 && this.status == 200) {
+                    // Crear un enlace temporal para descargar el archivo con la respuesta del servidor
+                    var blob = new Blob([this.responseText], { type: 'text/plain' });
+                    var url = window.URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'datos.txt';           // Nombre del archivo de descarga
+                    a.click();                          // Simular el clic en el enlace para iniciar la descarga
+                    window.URL.revokeObjectURL(url);    // Liberar el objeto de URL
+                }
+            };
+            // Configurar la solicitud GET al URI "/saveShutdown" del servidor
+            xhttp.open("GET", "/saveShutdown", true);
+            // Enviar la solicitud al servidor
+            xhttp.send();
+        }
+
         // Función para realizar una solicitud al servidor y actualizar la tabla
         function actualizarTabla() {
+            // Crear una nueva solicitud XMLHttpRequest
             var xhttp = new XMLHttpRequest();
+            // Configurar la función de devolución de llamada cuando el estado de la solicitud cambie
             xhttp.onreadystatechange = function() {
                 if (this.readyState == 4 && this.status == 200) {
                     // Parsear los datos JSON recibidos del servidor
@@ -114,7 +157,7 @@
                         var celdaPotencia = fila.insertCell(1);
                         var celdaTemperaturaPF = fila.insertCell(2);
                         var celdaTemperaturaPC = fila.insertCell(3);
-
+                        // Establecer los valores de las celdas con los datos recibidos
                         celdaTiempo.innerHTML = dato.tiempo;
                         celdaPotencia.innerHTML = dato.potencia;
                         celdaTemperaturaPF.innerHTML = dato.temperaturaPF;
@@ -122,14 +165,12 @@
                     });
                 }
             };
-
+            // Configurar la solicitud GET al URI "/get_data" del servidor
             xhttp.open("GET", "/get_data", true);
+            // Enviar la solicitud al servidor
             xhttp.send();
         }
-
-
-
-        // Actualizar la tabla cada 5 segundos (ajusta el intervalo según tus necesidades)
+        // Actualizar la tabla cada 1 segundo (ajusta el intervalo según tus necesidades)
         setInterval(actualizarTabla, 1000);
     </script>
 </body>
