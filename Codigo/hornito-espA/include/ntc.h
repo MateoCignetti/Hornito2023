@@ -5,7 +5,7 @@
 #include "freertos/task.h"
 #include "adc.h"
 
-float get_ntc_temperature_c(uint16_t adc_voltage_mv);
+float get_ntc_temperature_c(int adc_voltage_mv);
 void create_ntc_tasks();
 
 #endif

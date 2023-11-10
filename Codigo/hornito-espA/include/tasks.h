@@ -4,6 +4,7 @@
 #include "adc.h"
 #include "dimmer.h"
 #include "ntc.h"
+#include "control_system.h"
 
 void create_tasks();
 

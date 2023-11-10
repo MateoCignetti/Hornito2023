@@ -1,5 +1,5 @@
-#ifndef DIMMER_H
-#define DIMMER_H
+#ifndef CONTROL_SYSTEM_H
+#define CONTROL_SYSTEM_H
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -7,10 +7,9 @@
 #include "driver/gpio.h"
 #include "rom/ets_sys.h"
 #include "esp_log.h"
+#include "dimmer.h"
+#include "ntc.h"
 
-void setup_dimmer_isr();
-void create_dimmer_task();
-void vTaskDimmer();
-void set_dimmer_delay(int new_dimmer_delay_us);
+void create_control_system_task();
 
 #endif
