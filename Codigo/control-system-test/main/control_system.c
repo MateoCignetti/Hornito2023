@@ -2,11 +2,13 @@
 
 // Defines
 #define TASK_CONTROL_SYSTEM_DELAY_MS 2000
+#define US_TO_STEPS 400
 
 // Handles
 static TaskHandle_t xTaskControlSystemGetTemperature_handle = NULL;
 static TaskHandle_t xTaskControlSystemSendTemperature_handle = NULL;
 static TaskHandle_t xTaskControlSystemDecision_handle = NULL;
+static TaskHandle_t xTaskControlSystemSendSteps_handle = NULL;
 static SemaphoreHandle_t mutexControlSystem = NULL;
 //
 
@@ -17,8 +19,11 @@ const static char* TAG_CONTROL = "CONTROL";
 // Global variables
 static float setPointTemperature = 60.0;
 static float temperature = 25.0;
+int dimmer_delay_us = 9500;
 QueueHandle_t xQueueControlSystem;
 SemaphoreHandle_t xSemaphoreControlSystem;
+QueueHandle_t xQueueControlSystemToPower;
+SemaphoreHandle_t xSemaphoreControlSystemToPower;
 //
 
 // Function prototypes
@@ -26,6 +31,7 @@ static void create_control_system_mutex();
 static void vTaskControlSystemDecision();
 static void vTaskControlSystemGetTemperature();
 static void vTaskControlSystemSendTemperature();
+static void vTaskControlSystemSendSteps();
 //
 
 // Task
@@ -51,6 +57,13 @@ void create_control_system_tasks(){
                             tskIDLE_PRIORITY + 1,
                             &xTaskControlSystemDecision_handle,
                             1);
+    xTaskCreatePinnedToCore(vTaskControlSystemSendSteps,
+                            "Control System Send Steps Task",
+                            configMINIMAL_STACK_SIZE * 10,
+                            NULL,
+                            tskIDLE_PRIORITY + 4,
+                            &xTaskControlSystemSendSteps_handle,
+                            1);   
     create_control_system_mutex();
 }
 //
@@ -73,20 +86,19 @@ static void vTaskControlSystemSendTemperature(){
     xSemaphoreControlSystem = xSemaphoreCreateBinary();
     while (true) {
         if (xSemaphoreTake(xSemaphoreControlSystem, portMAX_DELAY)) {
-            xSemaphoreTake(mutexControlSystem, portMAX_DELAY);
-            if (xQueueSend(xQueueControlSystem, &temperature, portMAX_DELAY) != pdTRUE) {
+            if (xSemaphoreTake(mutexControlSystem, NULL)) {
+                if (xQueueSend(xQueueControlSystem, &temperature, portMAX_DELAY) != pdPASS) {
+                    ESP_LOGE(TAG_CONTROL, "Error sending temperature to web");
+                }
                 xSemaphoreGive(mutexControlSystem);
-                ESP_LOGE(TAG_CONTROL, "Error sending temperature to web");
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));
     }
 }
 
 static void vTaskControlSystemDecision(){
     int temperatureDifference = 0.0;
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    int dimmer_delay_us = 9500;
     while (true) {
         if (xSemaphoreTake(mutexControlSystem, NULL)) {
             temperatureDifference = setPointTemperature - temperature;
@@ -103,12 +115,29 @@ static void vTaskControlSystemDecision(){
             } else if (temperatureDifference < 20 && temperatureDifference > 10) {
                 dimmer_delay_us = 8000;
             } else if (temperatureDifference < 10 && temperatureDifference > 0) {
-                dimmer_delay_us = 9000;
-            } else {
                 dimmer_delay_us = 9200;
+            } else {
+                dimmer_delay_us = 9600;
             }
         set_dimmer_delay(dimmer_delay_us);
         ESP_LOGI(TAG_CONTROL, "Delay microseconds: %d", dimmer_delay_us);
+    }
+}
+
+static void vTaskControlSystemSendSteps(){
+    xQueueControlSystemToPower = xQueueCreate(1, sizeof(float));
+    xSemaphoreControlSystemToPower = xSemaphoreCreateBinary();
+    uint32_t steps = 0;
+    while (true) {
+        if (xSemaphoreTake(mutexControlSystem, NULL)) {
+            steps = dimmer_delay_us/US_TO_STEPS;
+            xSemaphoreGive(mutexControlSystem);
+        }
+        if (xSemaphoreTake(xSemaphoreControlSystemToPower, portMAX_DELAY)) {
+                if (xQueueSend(xQueueControlSystemToPower, &steps, portMAX_DELAY) != pdTRUE) {
+                    ESP_LOGE(TAG_CONTROL, "Error sending steps to power");
+                }
+        }
     }
 }
 //
