@@ -1,2 +1,2 @@
-idf_component_register(SRCS "control_system.c" "tasks.c" "ntc.c" "dimmer.c" "adc.c" "main.c"
+idf_component_register(SRCS "control_system.c" "ntc.c" "tasks.c" "dimmer.c" "adc.c" "main.c"
                     INCLUDE_DIRS "../include")

@@ -11,6 +11,6 @@
 void setup_dimmer_isr();
 void create_dimmer_task();
 void vTaskDimmer();
-extern uint8_t delayDimmerMs;
+void set_dimmer_delay(int new_dimmer_delay_us);
 
 #endif
