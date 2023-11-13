@@ -45,9 +45,6 @@ void create_sampling_timer() {
         .dispatch_method = ESP_TIMER_TASK,
         .name = "sampling_timer"
     };
-
-    ESP_LOGI(TAG_POWER, "Sampling period in microseconds: %d", SAMPLING_PERIOD_US);
-    ESP_LOGI(TAG_POWER, "Ammount of samples per period: %d", SAMPLES_AMMOUNT);
     current_samples = 0;
 
     esp_timer_create(&sampling_timer_args, &sampling_timer_handle);
@@ -113,16 +110,20 @@ void vTaskPower(){
     xSemaphorePower = xSemaphoreCreateBinary();
     TickType_t xLastWakeTime = xTaskGetTickCount();
 
+    ESP_LOGI(TAG_POWER, "Sampling period in microseconds: %d", SAMPLING_PERIOD_US);
+    ESP_LOGI(TAG_POWER, "Ammount of samples per period: %d", SAMPLES_AMMOUNT);
+
     while(true){
         if(xSemaphoreTake(xSemaphorePower, portMAX_DELAY)){
             samples_taken = false;
+
             ESP_LOGI(TAG_POWER, "Taking samples\n");
             create_sampling_timer();
             while(!samples_taken){
                 vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(SAMPLE_READING_DELAY_MS));
             }
             scale_samples();
-            float power = getVrms(20) / INTERIOR_RESISTOR_O;
+            float power = (pow(getVrms(20),2) ) / INTERIOR_RESISTOR_O;
             if(xQueueSend(xQueuePower, &power, portMAX_DELAY) != pdPASS){
                 ESP_LOGE(TAG_POWER, "Error sending power value to queue\n");
             } else{
