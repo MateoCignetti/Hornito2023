@@ -5,7 +5,14 @@
 #include "esp_log.h"
 #include "adc.h"
 #include "ntc.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
 
-void create_peltier_task();
+extern SempahoreHandle_t xSemaphorePeltier;
+extern QueueHandle_t xQueuePeltier;
+
+void create_peltier_tasks();
+void delete_peltier_tasks();
 
 #endif
