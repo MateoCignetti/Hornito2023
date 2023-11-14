@@ -57,9 +57,9 @@ void create_sampling_timer() {
 
 
 void sampling_timer_callback(){
-    taskENTER_CRITICAL();
+    //taskENTER_CRITICAL();
     samples[current_samples] = get_adc_voltage_mv(ADC_UNIT_1, ADC_CHANNEL_0);
-    taskEXIT_CRITICAL();
+    //taskEXIT_CRITICAL();
 
     if(current_samples == 0){
         if(samples[0] > ZERO_VOLTAGE_LOW_THRESHOLD && samples[0] < ZERO_VOLTAGE_HIGH_THRESHOLD){
