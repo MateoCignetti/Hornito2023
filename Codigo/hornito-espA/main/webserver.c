@@ -1,13 +1,14 @@
 #include "webserver.h"
 
 // Defines
-#define HTML_NEG_OFFSET      1      // Offset value for HTML manipulation.
-#define DATA_ARRAY_SIZE      100    // Maximum number of data entries.
-#define TIME_ARRAY_SIZE      100    // Maximum length of time string.
-#define POWER_ARRAY_SIZE     100    // Maximum length of power string.
-#define TEMP_ARRAY_SIZE      100    // Maximum length of temperature string.
-#define UPDATE_DATA_DELAY_MS 5000   // Period of updating data task.
-#define POWER_QUEUE_DELAY_MS 5000   // Delay for Queue
+#define HTML_NEG_OFFSET       1      // Offset value for HTML manipulation.
+#define DATA_ARRAY_SIZE       100    // Maximum number of data entries.
+#define TIME_ARRAY_SIZE       100    // Maximum length of time string.
+#define POWER_ARRAY_SIZE      100    // Maximum length of power string.
+#define TEMP_ARRAY_SIZE       100    // Maximum length of temperature string.
+#define UPDATE_DATA_DELAY_MS  5000   // Period of updating data task.
+#define POWER_QUEUE_DELAY_MS  5000   // Delay for Queue
+#define TASK_MONITOR_DELAY_MS 2000  
 //
 
 // Typedefs
@@ -26,9 +27,14 @@ static Measurement measurements[DATA_ARRAY_SIZE];   //Array of measurements.
 //
 
 // Handles
-static TaskHandle_t xTaskUpdateData_handle;         //Task handle for updating data task.
-static httpd_handle_t httpd_server = NULL;          //Initialize URI handlers config struct as NULL.
+static TaskHandle_t xTaskUpdateData_handle;             //Task handle for updating data task.
+static TaskHandle_t xTaskUpdateData_Monitoring_handle;  //Task handle for updating data task.
+static httpd_handle_t httpd_server = NULL;              //Initialize URI handlers config struct as NULL.
 static SemaphoreHandle_t mutexData = NULL;
+//
+
+//ESP-LOG TAGS
+const static char* TAG_UPDATE = "UPDATE DATA TASK";
 //
 
 // Private function prototypes
@@ -37,6 +43,7 @@ static esp_err_t time_post_handler(httpd_req_t *req);       //Handler for POST r
 static esp_err_t get_data_handler(httpd_req_t *req);        //Handler for GET requests to "/get_data" URI.
 static esp_err_t save_shutodwn_handler(httpd_req_t *req);   //Handler for POST requests to "/saveShutdown" URI.
 static void vTaskUpdateData();
+static void xTaskUpdateData_Monitoring();
 static void create_mutex_data();
 //
 
@@ -69,6 +76,7 @@ static const httpd_uri_t save_shutodwn = {
 // Functions
 //Create the data update task.
 static void create_data_tasks(){ 
+
     xTaskCreatePinnedToCore(vTaskUpdateData,
                             "vTaskUpdateData",
                             configMINIMAL_STACK_SIZE * 5,
@@ -76,6 +84,16 @@ static void create_data_tasks(){
                             tskIDLE_PRIORITY + 2,
                             &xTaskUpdateData_handle,
                             0);
+   
+
+    xTaskCreatePinnedToCore(xTaskUpdateData_Monitoring,
+                           "vTaskUpdateData Monitoring",
+                            configMINIMAL_STACK_SIZE * 2,
+                            NULL,
+                            tskIDLE_PRIORITY + 2,
+                            &xTaskUpdateData_Monitoring_handle,
+                            0);
+
     create_mutex_data();
 }
 
@@ -157,12 +175,31 @@ static void vTaskUpdateData(){
     vTaskDelete(NULL);  //Self delete.
 }
 
+static void xTaskUpdateData_Monitoring(){
+    while(true){
+        
+        ESP_LOGW(TAG_UPDATE, "Task Update Data: %u bytes", uxTaskGetStackHighWaterMark(xTaskUpdateData_handle));
+        vTaskDelay(pdMS_TO_TICKS(TASK_MONITOR_DELAY_MS));   
+        
+        //if(xTaskUpdateData_handle != NULL){ 
+        //UBaseType_t taskUpdateData_memory = uxTaskGetStackHighWaterMark(xTaskUpdateData_handle);
+        //ESP_LOGW(TAG_UPDATE, "Task Update Data: %u bytes", taskUpdateData_memory);
+        //    if(taskUpdateData_memory == 0){
+        //        xTaskUpdateData_handle = NULL;
+        //    }
+        //vTaskDelay(pdMS_TO_TICKS(TASK_MONITOR_DELAY_MS));
+        //}
+        
+    }
+}
 
 
 //Starts the webserver and registers URI handlers.
 void start_webserver(){
     httpd_config_t httpd_config = HTTPD_DEFAULT_CONFIG();               //Default HTTP server configuration.
-    httpd_config.stack_size = 5*4096;                                   //Double the default stack size for server tasks.
+    httpd_config.stack_size = 5*4096;                                   //Stack size for server tasks.
+
+    //httpd_config.task_priority = 
 
     if(httpd_start(&httpd_server, &httpd_config) == ESP_OK){
         httpd_register_uri_handler(httpd_server, &root);                //Register handler for root URI.
