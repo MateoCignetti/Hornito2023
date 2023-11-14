@@ -104,11 +104,11 @@ static void vTaskUpdateData(){
     while(update_while == 1){
         xSemaphoreGive(xSemaphorePower);
         xSemaphoreGive(xSemaphoreControlSystem);
-        xSemaphoreGive(xSemaphorePeltier);
+        //xSemaphoreGive(xSemaphorePeltier);
 
         float powerValue = 0.0;
         float hotTempValue = 0.0;
-        float coldTempValue = 0.0;
+        //float coldTempValue = 0.0;
 
         if(xQueueReceive( xQueuePower , &powerValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){
             sprintf(measurements[data_n].potencia, "%.2f", powerValue);
@@ -117,17 +117,18 @@ static void vTaskUpdateData(){
         }
         
         if(xQueueReceive( xQueueControlSystem , &hotTempValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){
-            strncpy(measurements[data_n].temperaturaPC, "%.2f", hotTempValue);
+            sprintf(measurements[data_n].temperaturaPC, "%.2f", hotTempValue);
         }else{
             ESP_LOGE("vTaskUpdateData", "Control System Queue timeout");
         }
 
+        strncpy(measurements[data_n].temperaturaPF, "80.00", TEMP_ARRAY_SIZE);
 
-        if(xQueueReceive( xQueuePeltier , &coldTempValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){
+        /*if(xQueueReceive( xQueuePeltier , &coldTempValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){
             sprintf(measurements[data_n].temperaturaPF, "%.2f", coldTempValue);
         }else{
             ESP_LOGE("vTaskUpdateData", "Peltier Queue timeout");
-        }
+        }*/
 
         strncpy(measurements[data_n].tiempo, get_time(), TIME_ARRAY_SIZE); 
 

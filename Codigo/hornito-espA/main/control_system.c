@@ -73,7 +73,7 @@ static void vTaskControlSystemGetTemperature(){
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while (true) {
         if (xSemaphoreTake(mutexControlSystem, NULL)) {
-            temperature = get_ntc_temperature_c(get_adc_voltage_mv_multisampling(ADC_UNIT_1, ADC_CHANNEL_0));
+            temperature = get_ntc_temperature_c(get_adc_voltage_mv_multisampling(ADC_UNIT_1, ADC_CHANNEL_3));
             xSemaphoreGive(mutexControlSystem);
         }
         ESP_LOGI(TAG_CONTROL, "NTC1: %.2f °C", temperature);
@@ -121,13 +121,14 @@ static void vTaskControlSystemDecision(){
             }
         set_dimmer_delay(dimmer_delay_us);
         ESP_LOGI(TAG_CONTROL, "Delay microseconds: %d", dimmer_delay_us);
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));
     }
 }
 
 static void vTaskControlSystemSendSteps(){
     xQueueControlSystemToPower = xQueueCreate(1, sizeof(float));
     xSemaphoreControlSystemToPower = xSemaphoreCreateBinary();
-    uint32_t steps = 0;
+    int steps = 0;
     while (true) {
         if (xSemaphoreTake(mutexControlSystem, NULL)) {
             steps = dimmer_delay_us/US_TO_STEPS;

@@ -2,6 +2,7 @@
 #define POWER_H
 
 #include "adc.h"
+#include "control_system.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
