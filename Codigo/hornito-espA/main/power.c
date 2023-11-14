@@ -5,7 +5,7 @@
 #define SIGNAL_FREQUENCY 50                                     // Frequency of the signal to sample in Hz
 #define SAMPLES_AMMOUNT (SAMPLING_FREQUENCY / SIGNAL_FREQUENCY) // Number of samples to take
 #define SAMPLING_PERIOD_US (1000000 / SAMPLING_FREQUENCY)       // Sampling period in microseconds
-#define SAMPLE_READING_DELAY_MS 25                              // Delay between samples in milliseconds
+#define SAMPLE_READING_DELAY_MS 1                              // Delay between samples in milliseconds
 
 #define VOLTAGE_DIVIDER_RATIO 6.86                              // Voltage divider ratio (Peak voltage before voltage divider
                                                                 //                        / Peak voltage after)
@@ -57,7 +57,9 @@ void create_sampling_timer() {
 
 
 void sampling_timer_callback(){
+    taskENTER_CRITICAL();
     samples[current_samples] = get_adc_voltage_mv(ADC_UNIT_1, ADC_CHANNEL_0);
+    taskEXIT_CRITICAL();
 
     if(current_samples == 0){
         if(samples[0] > ZERO_VOLTAGE_LOW_THRESHOLD && samples[0] < ZERO_VOLTAGE_HIGH_THRESHOLD){
