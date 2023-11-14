@@ -8,7 +8,7 @@
 
 #define ADC_UNIT ADC_UNIT_1
 #define ADC_CHANNEL ADC_CHANNEL_6
-
+#define TASK_MONITOR_DELAY_MS 2000
 #define SENSING_TIME_MS 10000
 
 //-------------------- Prototipos -------------
@@ -16,6 +16,7 @@
 static void vTaskDecision();
 static void vTaskReadTemperature();
 static void vTaskSendData();
+void vTaskMonitor();
 void create_peltier_tasks();
 void delete_peltier_tasks();
 
@@ -27,6 +28,7 @@ static SemaphoreHandle_t xTemperatureMutex = NULL;
 static TaskHandle_t xTaskDecision_handle = NULL;
 static TaskHandle_t xTaskReadTemperature_handle = NULL;
 static TaskHandle_t xTaskSendData_handle = NULL;
+static TaskHandle_t xTaskMonitor_handle = NULL;
 QueueHandle_t xQueuePeltier = NULL; 
 SemaphoreHandle_t xSemaphorePeltier = NULL;
 
@@ -53,6 +55,13 @@ void create_peltier_tasks(){
                             tskIDLE_PRIORITY + 1,
                             &xTaskSendData_handle,
                             0);
+    xTaskCreatePinnedToCore(vTaskMonitor,
+                            "Monitor Task", 
+                            configMINIMAL_STACK_SIZE * 5,
+                            NULL,
+                            tskIDLE_PRIORITY + 1,
+                            &xTaskMonitor_handle,
+                            0);
 
     if(xTemperatureMutex == NULL){
         xTemperatureMutex = xSemaphoreCreateMutex();
@@ -63,6 +72,7 @@ void delete_peltier_tasks(){
     vTaskDelete(xTaskDecision_handle);
     vTaskDelete(xTaskReadTemperature_handle);
     vTaskDelete(xTaskSendData_handle);
+    vTaskDelete(xTaskMonitor_handle);
 }
 
 static void vTaskSendData(){
@@ -136,5 +146,16 @@ static void vTaskDecision() {
 
         // Espera un tiempo antes de volver a leer la temperatura
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(SENSING_TIME_MS));
+    }
+}
+
+void vTaskMonitor(){
+    while(true){
+        
+        ESP_LOGW(TAG_PELTIER, "Task enviar temp: %u bytes", uxTaskGetStackHighWaterMark(xTaskSendData_handle));
+        ESP_LOGW(TAG_PELTIER, "Task leer temp: %u bytes", uxTaskGetStackHighWaterMark(xTaskReadTemperature_handle));
+        ESP_LOGW(TAG_PELTIER, "Task desicion: %u bytes", uxTaskGetStackHighWaterMark(xTaskDecision_handle));
+        
+        vTaskDelay(pdMS_TO_TICKS(TASK_MONITOR_DELAY_MS));
     }
 }
