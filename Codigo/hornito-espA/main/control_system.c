@@ -3,12 +3,14 @@
 // Defines
 #define TASK_CONTROL_SYSTEM_DELAY_MS 2000
 #define US_TO_STEPS 400
+#define TASK_MONITOR_DELAY_MS 2000
 
 // Handles
 static TaskHandle_t xTaskControlSystemGetTemperature_handle = NULL;
 static TaskHandle_t xTaskControlSystemSendTemperature_handle = NULL;
 static TaskHandle_t xTaskControlSystemDecision_handle = NULL;
 static TaskHandle_t xTaskControlSystemSendSteps_handle = NULL;
+static TaskHandle_t xTaskControlSystemMonitor_handle = NULL;
 static SemaphoreHandle_t mutexControlSystem = NULL;
 //
 
@@ -32,38 +34,56 @@ static void vTaskControlSystemDecision();
 static void vTaskControlSystemGetTemperature();
 static void vTaskControlSystemSendTemperature();
 static void vTaskControlSystemSendSteps();
+static void vTaskControlSystemMonitor();
 //
 
 // Task
 void create_control_system_tasks(){
-    xTaskCreatePinnedToCore(vTaskControlSystemGetTemperature,
-                            "Control System Get Temperature Task",
-                            configMINIMAL_STACK_SIZE * 10,
-                            NULL,
-                            tskIDLE_PRIORITY + 2,
-                            &xTaskControlSystemGetTemperature_handle,
-                            1);
-    xTaskCreatePinnedToCore(vTaskControlSystemSendTemperature,
-                            "Control System Send Temperature Task",
-                            configMINIMAL_STACK_SIZE * 10,
-                            NULL,
-                            tskIDLE_PRIORITY + 3,
-                            &xTaskControlSystemSendTemperature_handle,
-                            0);
-    xTaskCreatePinnedToCore(vTaskControlSystemDecision,
-                            "Control System Decision Task",
-                            configMINIMAL_STACK_SIZE * 10,
-                            NULL,
-                            tskIDLE_PRIORITY + 1,
-                            &xTaskControlSystemDecision_handle,
-                            1);
-    xTaskCreatePinnedToCore(vTaskControlSystemSendSteps,
-                            "Control System Send Steps Task",
-                            configMINIMAL_STACK_SIZE * 10,
-                            NULL,
-                            tskIDLE_PRIORITY + 4,
-                            &xTaskControlSystemSendSteps_handle,
-                            1);   
+    if (xTaskControlSystemGetTemperature_handle == NULL) {
+        xTaskCreatePinnedToCore(vTaskControlSystemGetTemperature,
+                                "Control System Get Temperature Task",
+                                configMINIMAL_STACK_SIZE * 10,
+                                NULL,
+                                tskIDLE_PRIORITY + 2,
+                                &xTaskControlSystemGetTemperature_handle,
+                                1);
+    }
+    if (xTaskControlSystemSendTemperature_handle == NULL) {
+        xTaskCreatePinnedToCore(vTaskControlSystemSendTemperature,
+                                "Control System Send Temperature Task",
+                                configMINIMAL_STACK_SIZE * 10,
+                                NULL,
+                                tskIDLE_PRIORITY + 3,
+                                &xTaskControlSystemSendTemperature_handle,
+                                0);
+    }
+    if (xTaskControlSystemDecision_handle == NULL) {
+        xTaskCreatePinnedToCore(vTaskControlSystemDecision,
+                                "Control System Decision Task",
+                                configMINIMAL_STACK_SIZE * 10,
+                                NULL,
+                                tskIDLE_PRIORITY + 1,
+                                &xTaskControlSystemDecision_handle,
+                                1);
+    }
+    if (xTaskControlSystemSendSteps_handle == NULL) {
+        xTaskCreatePinnedToCore(vTaskControlSystemSendSteps,
+                        "Control System Send Steps Task",
+                        configMINIMAL_STACK_SIZE * 10,
+                        NULL,
+                        tskIDLE_PRIORITY + 4,
+                        &xTaskControlSystemSendSteps_handle,
+                        1); 
+    } 
+    if (xTaskControlSystemMonitor_handle == NULL) {
+        xTaskCreatePinnedToCore(vTaskControlSystemMonitor,
+                                "Control System Monitor Task",
+                                configMINIMAL_STACK_SIZE * 5,
+                                NULL,
+                                tskIDLE_PRIORITY + 5,
+                                &xTaskControlSystemMonitor_handle,
+                                1);
+    }
     create_control_system_mutex();
 }
 
@@ -72,6 +92,7 @@ void delete_control_system_tasks(){
     vTaskDelete(xTaskControlSystemSendTemperature_handle);
     vTaskDelete(xTaskControlSystemDecision_handle);
     vTaskDelete(xTaskControlSystemSendSteps_handle);
+    vTaskDelete(xTaskControlSystemMonitor_handle);
 }
 //
 
@@ -149,6 +170,40 @@ static void vTaskControlSystemSendSteps(){
                     ESP_LOGE(TAG_CONTROL, "Error sending steps to power");
                 }
         }
+    }
+}
+
+static void vTaskControlSystemMonitor(){
+    while (true) {
+        if(xTaskControlSystemGetTemperature_handle != NULL){ 
+            UBaseType_t taskGetTemperature_memory = uxTaskGetStackHighWaterMark(xTaskControlSystemGetTemperature_handle);
+            ESP_LOGW(TAG_CONTROL, "Task leer temp: %u bytes", taskGetTemperature_memory);
+            if(taskGetTemperature_memory == 0){
+                xTaskControlSystemGetTemperature_handle = NULL;
+            }
+        }
+        if(xTaskControlSystemSendTemperature_handle != NULL){ 
+            UBaseType_t taskSendTemperature_memory = uxTaskGetStackHighWaterMark(xTaskControlSystemSendTemperature_handle);
+            ESP_LOGW(TAG_CONTROL, "Task leer temp: %u bytes", taskSendTemperature_memory);
+            if(taskSendTemperature_memory == 0){
+                xTaskControlSystemSendTemperature_handle = NULL;
+            }
+        }
+        if(xTaskControlSystemDecision_handle != NULL){ 
+            UBaseType_t taskDecision_memory = uxTaskGetStackHighWaterMark(xTaskControlSystemDecision_handle);
+            ESP_LOGW(TAG_CONTROL, "Task leer temp: %u bytes", taskDecision_memory);
+            if(taskDecision_memory == 0){
+                xTaskControlSystemDecision_handle = NULL;
+            }
+        }
+        if(xTaskControlSystemSendSteps_handle != NULL){ 
+            UBaseType_t taskSendSteps_memory = uxTaskGetStackHighWaterMark(xTaskControlSystemSendSteps_handle);
+            ESP_LOGW(TAG_CONTROL, "Task leer temp: %u bytes", taskSendSteps_memory);
+            if(taskSendSteps_memory == 0){
+                xTaskControlSystemSendSteps_handle = NULL;
+            }
+        }        
+        vTaskDelay(pdMS_TO_TICKS(TASK_MONITOR_DELAY_MS));
     }
 }
 //
