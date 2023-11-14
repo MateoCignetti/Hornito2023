@@ -39,51 +39,46 @@ static void vTaskControlSystemMonitor();
 
 // Task
 void create_control_system_tasks(){
-    if (xTaskControlSystemGetTemperature_handle == NULL) {
-        xTaskCreatePinnedToCore(vTaskControlSystemGetTemperature,
-                                "Control System Get Temperature Task",
-                                configMINIMAL_STACK_SIZE * 10,
-                                NULL,
-                                tskIDLE_PRIORITY + 2,
-                                &xTaskControlSystemGetTemperature_handle,
-                                1);
-    }
-    if (xTaskControlSystemSendTemperature_handle == NULL) {
-        xTaskCreatePinnedToCore(vTaskControlSystemSendTemperature,
-                                "Control System Send Temperature Task",
-                                configMINIMAL_STACK_SIZE * 10,
-                                NULL,
-                                tskIDLE_PRIORITY + 3,
-                                &xTaskControlSystemSendTemperature_handle,
-                                0);
-    }
-    if (xTaskControlSystemDecision_handle == NULL) {
-        xTaskCreatePinnedToCore(vTaskControlSystemDecision,
-                                "Control System Decision Task",
-                                configMINIMAL_STACK_SIZE * 10,
-                                NULL,
-                                tskIDLE_PRIORITY + 1,
-                                &xTaskControlSystemDecision_handle,
-                                1);
-    }
-    if (xTaskControlSystemSendSteps_handle == NULL) {
-        xTaskCreatePinnedToCore(vTaskControlSystemSendSteps,
-                        "Control System Send Steps Task",
-                        configMINIMAL_STACK_SIZE * 10,
-                        NULL,
-                        tskIDLE_PRIORITY + 4,
-                        &xTaskControlSystemSendSteps_handle,
-                        1); 
-    } 
-    if (xTaskControlSystemMonitor_handle == NULL) {
-        xTaskCreatePinnedToCore(vTaskControlSystemMonitor,
-                                "Control System Monitor Task",
-                                configMINIMAL_STACK_SIZE * 5,
-                                NULL,
-                                tskIDLE_PRIORITY + 5,
-                                &xTaskControlSystemMonitor_handle,
-                                1);
-    }
+    xTaskCreatePinnedToCore(vTaskControlSystemGetTemperature,
+                            "Control System Get Temperature Task",
+                            configMINIMAL_STACK_SIZE * 10,
+                            NULL,
+                            tskIDLE_PRIORITY + 2,
+                            &xTaskControlSystemGetTemperature_handle,
+                            1);
+
+    xTaskCreatePinnedToCore(vTaskControlSystemSendTemperature,
+                            "Control System Send Temperature Task",
+                            configMINIMAL_STACK_SIZE * 10,
+                            NULL,
+                            tskIDLE_PRIORITY + 3,
+                            &xTaskControlSystemSendTemperature_handle,
+                            0);
+
+    xTaskCreatePinnedToCore(vTaskControlSystemDecision,
+                            "Control System Decision Task",
+                            configMINIMAL_STACK_SIZE * 10,
+                            NULL,
+                            tskIDLE_PRIORITY + 1,
+                            &xTaskControlSystemDecision_handle,
+                            1);
+
+    xTaskCreatePinnedToCore(vTaskControlSystemSendSteps,
+                            "Control System Send Steps Task",
+                            configMINIMAL_STACK_SIZE * 10,
+                            NULL,
+                            tskIDLE_PRIORITY + 4,
+                            &xTaskControlSystemSendSteps_handle,
+                            1); 
+
+    xTaskCreatePinnedToCore(vTaskControlSystemMonitor,
+                            "Control System Monitor Task",
+                            configMINIMAL_STACK_SIZE * 5,
+                            NULL,
+                            tskIDLE_PRIORITY + 5,
+                            &xTaskControlSystemMonitor_handle,
+                            1);
+
     create_control_system_mutex();
 }
 
@@ -110,8 +105,14 @@ static void vTaskControlSystemGetTemperature(){
 }
 
 static void vTaskControlSystemSendTemperature(){
-    xQueueControlSystem = xQueueCreate(1, sizeof(float));
-    xSemaphoreControlSystem = xSemaphoreCreateBinary();
+    if(xQueueControlSystem == NULL){
+        xQueueControlSystem = xQueueCreate(1, sizeof(float));
+    }
+    
+    if(xSemaphoreControlSystem == NULL){
+        xSemaphoreControlSystem = xSemaphoreCreateBinary();
+    }
+    
     while (true) {
         if (xSemaphoreTake(xSemaphoreControlSystem, portMAX_DELAY)) {
             if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
@@ -157,9 +158,16 @@ static void vTaskControlSystemDecision(){
 }
 
 static void vTaskControlSystemSendSteps(){
-    xQueueControlSystemToPower = xQueueCreate(1, sizeof(float));
-    xSemaphoreControlSystemToPower = xSemaphoreCreateBinary();
+    if(xQueueControlSystemToPower == NULL){
+        xQueueControlSystemToPower = xQueueCreate(1, sizeof(float));
+    }
+
+    if(xSemaphoreControlSystemToPower == NULL){
+        xSemaphoreControlSystemToPower = xSemaphoreCreateBinary();
+    }
+
     int steps = 0;
+    
     while (true) {
         if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
             steps = dimmer_delay_us/US_TO_STEPS;
