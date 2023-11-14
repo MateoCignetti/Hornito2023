@@ -16,6 +16,9 @@
 #define TRANSORMER_RATIO 16.58                                  // Transformer ratio (Vprimary / Vsecondary)
 #define INTERIOR_RESISTOR_O 33.5                                // Interior resistor in Ohms
 //#define EXTERIOR_RESISTOR_O 217.5                             // Exterior resistor in Ohms
+#define RECEIVE_STEPS_TIMEOUT_MS 5000                           // Timeout for receiving steps from control system in milliseconds
+#define ZERO_VOLTAGE_LOW_THRESHOLD 120.0
+#define ZERO_VOLTAGE_HIGH_THRESHOLD 150.0
 //
 
 // Global variables
@@ -56,7 +59,7 @@ void sampling_timer_callback(){
     samples[current_samples] = get_adc_voltage_mv(ADC_UNIT_1, ADC_CHANNEL_0);
 
     if(current_samples == 0){
-        if(samples[0] > 120.0 && samples[0] < 150.0){
+        if(samples[0] > ZERO_VOLTAGE_LOW_THRESHOLD && samples[0] < ZERO_VOLTAGE_HIGH_THRESHOLD){
             current_samples++;
         }
     } else{
@@ -109,6 +112,7 @@ void vTaskPower(){
     xQueuePower = xQueueCreate(1, sizeof(float));
     xSemaphorePower = xSemaphoreCreateBinary();
     TickType_t xLastWakeTime = xTaskGetTickCount();
+    int delay_steps = 0;
 
     ESP_LOGI(TAG_POWER, "Sampling period in microseconds: %d", SAMPLING_PERIOD_US);
     ESP_LOGI(TAG_POWER, "Ammount of samples per period: %d", SAMPLES_AMMOUNT);
@@ -123,11 +127,16 @@ void vTaskPower(){
                 vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(SAMPLE_READING_DELAY_MS));
             }
             scale_samples();
-            float power = (pow(getVrms(20),2) ) / INTERIOR_RESISTOR_O;
-            if(xQueueSend(xQueuePower, &power, portMAX_DELAY) != pdPASS){
-                ESP_LOGE(TAG_POWER, "Error sending power value to queue\n");
+            xSemaphoreGive(xSemaphoreControlSystemToPower);
+            if(xQueueReceive(xQueueControlSystemToPower, &delay_steps, portMAX_DELAY) != pdPASS){
+                ESP_LOGE(TAG_POWER, "Error receiving delay steps from control system\n");
             } else{
-                ESP_LOGI(TAG_POWER, "Sent %.2f value to power queue", power);
+                float power = (pow(getVrms(delay_steps),2) ) / INTERIOR_RESISTOR_O;
+                if(xQueueSend(xQueuePower, &power, pdMS_TO_TICKS(RECEIVE_STEPS_TIMEOUT_MS)) != pdPASS){
+                    ESP_LOGE(TAG_POWER, "Error sending power value to queue\n");
+                } else{
+                    ESP_LOGI(TAG_POWER, "Sent %.2f W value to power queue", power);
+                }
             }
         }
     }
