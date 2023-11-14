@@ -42,7 +42,7 @@ void app_main(void){
 // FreeRTOS Task create
 void tasks_create(){
     //create_adc_read_task();
-    create_peltier_task();
+    create_peltier_tasks();
     create_ntc_tasks();
 }
 //

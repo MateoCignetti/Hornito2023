@@ -8,8 +8,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 
-extern SempahoreHandle_t xSemaphorePeltier;
+extern SemaphoreHandle_t xSemaphorePeltier;
 extern QueueHandle_t xQueuePeltier;
 
 void create_peltier_tasks();

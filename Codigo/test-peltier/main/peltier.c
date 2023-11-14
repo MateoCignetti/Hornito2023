@@ -14,7 +14,7 @@
 //-------------------- Prototipos -------------
 
 static void vTaskDecision();
-static void vTaskReadTemperatura();
+static void vTaskReadTemperature();
 static void vTaskSendData();
 void create_peltier_tasks();
 void delete_peltier_tasks();
@@ -36,7 +36,7 @@ void create_peltier_tasks(){
                             configMINIMAL_STACK_SIZE * 5,
                             NULL,
                             tskIDLE_PRIORITY + 1,
-                            xTaskDecision_handle,
+                            &xTaskDecision_handle,
                             0);
 
     xTaskCreatePinnedToCore(vTaskReadTemperature,
@@ -44,14 +44,14 @@ void create_peltier_tasks(){
                             configMINIMAL_STACK_SIZE * 5,
                             NULL,
                             tskIDLE_PRIORITY + 1,
-                            xTaskReadTemperature_handle,
+                            &xTaskReadTemperature_handle,
                             0);
     xTaskCreatePinnedToCore(vTaskSendData,
                             "Send Task", 
                             configMINIMAL_STACK_SIZE * 5,
                             NULL,
                             tskIDLE_PRIORITY + 1,
-                            xTaskSendData_handle,
+                            &xTaskSendData_handle,
                             0);
 
     if(xTemperatureMutex == NULL){
@@ -112,9 +112,9 @@ static void vTaskDecision() {
 
     while (true) {
       
-        if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
+        if (xSemaphoreTake(xTemperatureMutex, portMAX_DELAY)) {
             temperatureDifference = temperature_c - setPointTemperature;
-            xSemaphoreGive(mutexControlSystem);
+            xSemaphoreGive(xTemperatureMutex);
         }    
 
         if (temperatureDifference >= 2) {
