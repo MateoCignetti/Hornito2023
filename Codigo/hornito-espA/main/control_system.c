@@ -53,7 +53,7 @@ void create_control_system_tasks(){
                             NULL,
                             tskIDLE_PRIORITY + 3,
                             &xTaskControlSystemSendTemperature_handle,
-                            0);
+                            1);
 
     xTaskCreatePinnedToCore(vTaskControlSystemDecision,
                             "Control System Decision Task",
@@ -61,7 +61,7 @@ void create_control_system_tasks(){
                             NULL,
                             tskIDLE_PRIORITY + 1,
                             &xTaskControlSystemDecision_handle,
-                            1);
+                            0);
 
     xTaskCreatePinnedToCore(vTaskControlSystemSendSteps,
                             "Control System Send Steps Task",
@@ -69,13 +69,13 @@ void create_control_system_tasks(){
                             NULL,
                             tskIDLE_PRIORITY + 4,
                             &xTaskControlSystemSendSteps_handle,
-                            1); 
+                            0); 
 
     xTaskCreatePinnedToCore(vTaskControlSystemMonitor,
                             "Control System Monitor Task",
                             configMINIMAL_STACK_SIZE * 5,
                             NULL,
-                            tskIDLE_PRIORITY + 5,
+                            tskIDLE_PRIORITY + 1,
                             &xTaskControlSystemMonitor_handle,
                             1);
 
@@ -167,7 +167,7 @@ static void vTaskControlSystemSendSteps(){
     }
 
     int steps = 0;
-    
+
     while (true) {
         if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
             steps = dimmer_delay_us/US_TO_STEPS;

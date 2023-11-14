@@ -108,7 +108,13 @@ float getVrms(int delay_steps){
 
 // Task-related functions
 void create_power_tasks(){
-    xTaskCreatePinnedToCore(&vTaskPower, "Power read task", 2048, &xTaskPower_handle, 5, NULL, 0);
+    xTaskCreatePinnedToCore(&vTaskPower,
+                            "Power read task",
+                            2048,
+                            &xTaskPower_handle,
+                            tskIDLE_PRIORITY + 5,
+                            NULL,
+                            1);
 }
 
 void delete_power_tasks(){

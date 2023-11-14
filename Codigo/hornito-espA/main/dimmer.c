@@ -46,9 +46,9 @@ void create_dimmer_task(){
                             "Dimmer Task",
                             configMINIMAL_STACK_SIZE * 10,
                             NULL,
-                            tskIDLE_PRIORITY + 2,
+                            tskIDLE_PRIORITY + 6,
                             &xTaskDimmer_handle,
-                            1);
+                            0);
 }
 
 void delete_dimmer_task(){
