@@ -9,7 +9,7 @@ static TaskHandle_t xTaskControlSystemGetTemperature_handle = NULL;
 static TaskHandle_t xTaskControlSystemSendTemperature_handle = NULL;
 static TaskHandle_t xTaskControlSystemDecision_handle = NULL;
 static TaskHandle_t xTaskControlSystemSendSteps_handle = NULL;
-        create_tasks();
+static SemaphoreHandle_t mutexControlSystem = NULL;
 //
 
 // ESP-LOG Tags
