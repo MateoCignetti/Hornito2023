@@ -11,5 +11,6 @@
 #include "power.h"
 
 void create_tasks();
+void delete_tasks();
 
 #endif

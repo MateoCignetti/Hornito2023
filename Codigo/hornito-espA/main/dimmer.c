@@ -16,6 +16,11 @@ static void dimmer_isr();
 // Global variables
 const static char* TAG_DIMMER = "DIMMER";
 static int dimmer_delay_us = 9500; 
+bool dimmer_enabled = true;
+//
+
+// Function prototypes
+void vTaskDimmer();
 //
 
 void setup_dimmer_isr(){
@@ -46,21 +51,37 @@ void create_dimmer_task(){
                             1);
 }
 
+void delete_dimmer_task(){
+    vTaskDelete(xTaskDimmer_handle);
+}
+
 void set_dimmer_delay(int new_dimmer_delay_us){
     dimmer_delay_us = new_dimmer_delay_us;
+}
+
+void enable_dimmer(){
+    dimmer_enabled = true;
+}
+
+void disable_dimmer(){
+    dimmer_enabled = false;
 }
 
 void vTaskDimmer(){
     gpio_set_direction(PIN_OUT, GPIO_MODE_OUTPUT);
     while(true){
         if(xSemaphoreTake(xDimmerSemaphore_handle, pdMS_TO_TICKS(DIMMER_SEMAPHORE_TIMEOUT_MS))){
+            if(dimmer_enabled){
+                ets_delay_us(dimmer_delay_us);
+                gpio_set_level(PIN_OUT, 1);
+                ets_delay_us(PULSE_DELAY_US);
+                gpio_set_level(PIN_OUT, 0);
+            } else{
+                gpio_set_level(PIN_OUT, 0);
+            }
             //ESP_LOGI(TAG_DIMMER, "Semaphore taken anashe");
             //ESP_LOGI(TAG_DIMMER, "Delay microseconds: %d", dimmer_delay_us);
-            ets_delay_us(dimmer_delay_us);
             //vTaskDelay(pdMS_TO_TICKS(DELAY_DIMMER_MS));
-            gpio_set_level(PIN_OUT, 1);
-            ets_delay_us(PULSE_DELAY_US);
-            gpio_set_level(PIN_OUT, 0);
         } else{
             ESP_LOGE(TAG_DIMMER, "Dimmer timeout");
         }

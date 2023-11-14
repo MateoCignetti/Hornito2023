@@ -15,5 +15,6 @@ extern SemaphoreHandle_t xSemaphorePower;   // Semaphore to indicate that the po
 extern QueueHandle_t xQueuePower;           // Queue for power readings
 
 void create_power_tasks();                  // Create power-related FreeRTOS tasks
+void delete_power_tasks();                  // Delete power-related FreeRTOS tasks
 
 #endif

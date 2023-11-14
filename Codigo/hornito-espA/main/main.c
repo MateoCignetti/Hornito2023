@@ -31,7 +31,7 @@ void app_main(void){
     adc_init();
     setup_dimmer_isr();
     setup_wifi();
-    create_tasks();
+    //create_tasks();
     start_webserver();
 }
 //

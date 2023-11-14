@@ -10,7 +10,9 @@
 
 void setup_dimmer_isr();
 void create_dimmer_task();
-void vTaskDimmer();
+void delete_dimmer_task();
 void set_dimmer_delay(int new_dimmer_delay_us);
+void enable_dimmer();
+void disable_dimmer();
 
 #endif

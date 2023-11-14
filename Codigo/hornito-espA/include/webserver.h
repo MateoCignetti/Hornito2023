@@ -17,6 +17,8 @@
 #include "ntc.h"
 #include "power.h"
 
+#include "tasks.h"
+
 
 //
 

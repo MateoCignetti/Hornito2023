@@ -12,6 +12,7 @@
 #include "ntc.h"
 
 void create_control_system_tasks();
+void delete_control_system_tasks();
 
 extern QueueHandle_t xQueueControlSystem;
 extern SemaphoreHandle_t xSemaphoreControlSystem;

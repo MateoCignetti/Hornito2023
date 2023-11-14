@@ -29,6 +29,7 @@ static bool samples_taken = false;                              // Flag to indic
 static esp_timer_handle_t sampling_timer_handle = NULL;         // Handle for the sampling timer     
 SemaphoreHandle_t xSemaphorePower;                              // Semaphore to indicate that the power value should be read
 QueueHandle_t xQueuePower;                                      // Queue to send the power value
+static TaskHandle_t xTaskPower_handle = NULL;                   // Handle for the power task
 //
 
 // Function prototypes
@@ -105,7 +106,11 @@ float getVrms(int delay_steps){
 
 // Task-related functions
 void create_power_tasks(){
-    xTaskCreatePinnedToCore(&vTaskPower, "Power read task", 2048, NULL, 5, NULL, 0);
+    xTaskCreatePinnedToCore(&vTaskPower, "Power read task", 2048, &xTaskPower_handle, 5, NULL, 0);
+}
+
+void delete_power_tasks(){
+    vTaskDelete(xTaskPower_handle);
 }
 
 void vTaskPower(){
