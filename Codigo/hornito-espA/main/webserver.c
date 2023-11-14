@@ -76,7 +76,7 @@ static void create_data_tasks(){
                             0);
 }
 
-//Task function for updating data periodically.
+/*/Task function for updating data periodically.
 static void vTaskUpdateData(){
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while(update_while == 1){
@@ -95,7 +95,49 @@ static void vTaskUpdateData(){
         }
     }
     vTaskDelete(NULL);  //Self delete.
+}*/
+
+
+//Task function for updating data periodically.
+static void vTaskUpdateData(){
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    while(update_while == 1){
+        xSemaphoreGive(xSemaphorePower);
+        xSemaphoreGive(xSemaphoreControlSystem);
+        xSemaphoreGive(xSemaphorePeltier);
+
+        float powerValue = 0.0;
+        float hotTempValue = 0.0;
+        float coldTempValue = 0.0;
+
+        if(xQueueReceive( xQueuePower , &powerValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){
+            sprintf(measurements[data_n].potencia, "%.2f", powerValue);
+        }else{
+            ESP_LOGE("vTaskUpdateData", "Power Queue timeout");
+        }
+        
+        if(xQueueReceive( xQueueControlSystem , &hotTempValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){
+            strncpy(measurements[data_n].temperaturaPC, "%.2f", hotTempValue);
+        }else{
+            ESP_LOGE("vTaskUpdateData", "Control System Queue timeout");
+        }
+
+
+        if(xQueueReceive( xQueuePeltier , &coldTempValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){
+            sprintf(measurements[data_n].temperaturaPF, "%.2f", coldTempValue);
+        }else{
+            ESP_LOGE("vTaskUpdateData", "Peltier Queue timeout");
+        }
+
+        strncpy(measurements[data_n].tiempo, get_time(), TIME_ARRAY_SIZE); 
+
+        data_n++;   //Increment data entries counter.
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(UPDATE_DATA_DELAY_MS));
+    }
+    vTaskDelete(NULL);  //Self delete.
 }
+
+
 
 //Starts the webserver and registers URI handlers.
 void start_webserver(){
