@@ -44,7 +44,7 @@ static void IRAM_ATTR dimmer_isr(){
 void create_dimmer_task(){
     xTaskCreatePinnedToCore(vTaskDimmer,
                             "Dimmer Task",
-                            configMINIMAL_STACK_SIZE * 10,
+                            configMINIMAL_STACK_SIZE * 2,
                             NULL,
                             tskIDLE_PRIORITY + 6,
                             &xTaskDimmer_handle,

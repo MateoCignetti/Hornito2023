@@ -41,7 +41,7 @@ static void vTaskControlSystemMonitor();
 void create_control_system_tasks(){
     xTaskCreatePinnedToCore(vTaskControlSystemGetTemperature,
                             "Control System Get Temperature Task",
-                            configMINIMAL_STACK_SIZE * 10,
+                            configMINIMAL_STACK_SIZE * 2,
                             NULL,
                             tskIDLE_PRIORITY + 2,
                             &xTaskControlSystemGetTemperature_handle,
@@ -49,7 +49,7 @@ void create_control_system_tasks(){
 
     xTaskCreatePinnedToCore(vTaskControlSystemSendTemperature,
                             "Control System Send Temperature Task",
-                            configMINIMAL_STACK_SIZE * 10,
+                            configMINIMAL_STACK_SIZE * 2,
                             NULL,
                             tskIDLE_PRIORITY + 3,
                             &xTaskControlSystemSendTemperature_handle,
@@ -57,7 +57,7 @@ void create_control_system_tasks(){
 
     xTaskCreatePinnedToCore(vTaskControlSystemDecision,
                             "Control System Decision Task",
-                            configMINIMAL_STACK_SIZE * 10,
+                            configMINIMAL_STACK_SIZE * 2,
                             NULL,
                             tskIDLE_PRIORITY + 1,
                             &xTaskControlSystemDecision_handle,
@@ -65,7 +65,7 @@ void create_control_system_tasks(){
 
     xTaskCreatePinnedToCore(vTaskControlSystemSendSteps,
                             "Control System Send Steps Task",
-                            configMINIMAL_STACK_SIZE * 10,
+                            configMINIMAL_STACK_SIZE * 2,
                             NULL,
                             tskIDLE_PRIORITY + 4,
                             &xTaskControlSystemSendSteps_handle,

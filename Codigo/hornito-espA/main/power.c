@@ -110,9 +110,9 @@ float getVrms(int delay_steps){
 void create_power_tasks(){
     xTaskCreatePinnedToCore(&vTaskPower,
                             "Power read task",
-                            2048,
+                            configMINIMAL_STACK_SIZE * 2,
                             &xTaskPower_handle,
-                            tskIDLE_PRIORITY + 5,
+                            tskIDLE_PRIORITY + 1,
                             NULL,
                             1);
 }

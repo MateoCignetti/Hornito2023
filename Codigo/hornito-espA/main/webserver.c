@@ -79,9 +79,9 @@ static void create_data_tasks(){
 
     xTaskCreatePinnedToCore(vTaskUpdateData,
                             "vTaskUpdateData",
-                            configMINIMAL_STACK_SIZE * 5,
+                            configMINIMAL_STACK_SIZE * 3,
                             NULL,
-                            tskIDLE_PRIORITY + 5,
+                            tskIDLE_PRIORITY + 1,
                             &xTaskUpdateData_handle,
                             1);
    
@@ -198,8 +198,8 @@ static void xTaskUpdateData_Monitoring(){
 void start_webserver(){
     httpd_config_t httpd_config = HTTPD_DEFAULT_CONFIG();               //Default HTTP server configuration.
     httpd_config.stack_size = 5*4096;                                   //Stack size for server tasks.
-    httpd_config.task_priority = tskIDLE_PRIORITY + 2;
-    httpd_config.core_id = 1;
+    //httpd_config.task_priority = tskIDLE_PRIORITY + 2;
+    //httpd_config.core_id = 1;
 
     if(httpd_start(&httpd_server, &httpd_config) == ESP_OK){
         httpd_register_uri_handler(httpd_server, &root);                //Register handler for root URI.
