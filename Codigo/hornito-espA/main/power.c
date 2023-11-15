@@ -1,30 +1,31 @@
 #include "power.h"
 
 // Defines
-#define SAMPLING_FREQUENCY 2500                                 // Sampling frequency in Hz
-#define SIGNAL_FREQUENCY 50                                     // Frequency of the signal to sample in Hz
-#define SAMPLES_AMMOUNT (SAMPLING_FREQUENCY / SIGNAL_FREQUENCY) // Number of samples to take
-#define SAMPLING_PERIOD_US (1000000 / SAMPLING_FREQUENCY)       // Sampling period in microseconds
-#define SAMPLE_READING_DELAY_MS 1                              // Delay between samples in milliseconds
+#define SAMPLING_FREQUENCY 2500                                     // Sampling frequency in Hz
+#define SIGNAL_FREQUENCY 50                                         // Frequency of the signal to sample in Hz
+#define SAMPLES_AMMOUNT (SAMPLING_FREQUENCY / SIGNAL_FREQUENCY)     // Number of samples to take
+#define SAMPLING_PERIOD_US (1000000 / SAMPLING_FREQUENCY)           // Sampling period in microseconds
+#define SAMPLE_READING_DELAY_MS 1                                   // Delay between samples in milliseconds
 
-#define VOLTAGE_DIVIDER_RATIO 6.86                              // Voltage divider ratio (Peak voltage before voltage divider
-                                                                //                        / Peak voltage after)
+#define VOLTAGE_DIVIDER_RATIO 6.86                                  // Voltage divider ratio (Peak voltage before voltage divider
+                                                                    //                        / Peak voltage after)
 
-#define DIODE_FORWARD_VOLTAGE 1.1                               // Forward voltage drop of two diodes in series (because of
-                                                                // the full bridge rectifier)
+#define DIODE_FORWARD_VOLTAGE 1.1                                   // Forward voltage drop of two diodes in series (because of
+                                                                    // the full bridge rectifier)
 
-#define TRANSORMER_RATIO 16.58                                  // Transformer ratio (Vprimary / Vsecondary)
-#define INTERIOR_RESISTOR_O 33.5                                // Interior resistor in Ohms
-//#define EXTERIOR_RESISTOR_O 217.5                             // Exterior resistor in Ohms
-#define RECEIVE_STEPS_TIMEOUT_MS 5000                           // Timeout for receiving steps from control system in milliseconds
-#define ZERO_VOLTAGE_LOW_THRESHOLD 120.0
-#define ZERO_VOLTAGE_HIGH_THRESHOLD 150.0
+#define TRANSORMER_RATIO 16.58                                      // Transformer ratio (Vprimary / Vsecondary)
+#define INTERIOR_RESISTOR_O 33.5                                    // Interior resistor in Ohms
+//#define EXTERIOR_RESISTOR_O 217.5                                 // Exterior resistor in Ohms
+#define RECEIVE_STEPS_TIMEOUT_MS 5000                               // Timeout for receiving steps from control system in milliseconds
+#define ZERO_VOLTAGE_LOW_THRESHOLD 120                              // Low value threshold for a to be considered 0 mV
+#define ZERO_VOLTAGE_HIGH_THRESHOLD 150                             // High value threshold for a sample to be considered 0 mV
+#define LAST_SAMPLE_THRESHOLD (ZERO_VOLTAGE_HIGH_THRESHOLD + 45)    // Threshold for the last sample to be considered correct
 //
 
 // Global variables
 static const char* TAG_POWER = "POWER";                         // Tag for logging
 static int current_samples = 0;                                 // Samples counter for the sampling timer
-static float samples[SAMPLES_AMMOUNT];                          // Array to store the samples
+static int samples[SAMPLES_AMMOUNT];                            // Array to store the samples
 static bool samples_taken = false;                              // Flag to indicate if the samples were taken
 static esp_timer_handle_t sampling_timer_handle = NULL;         // Handle for the sampling timer     
 SemaphoreHandle_t xSemaphorePower;                              // Semaphore to indicate that the power value should be read
@@ -42,6 +43,8 @@ void vTaskPower();
 //
 
 // General functions
+
+// Function to create the timer that will take the samples
 void create_sampling_timer() {
     esp_timer_create_args_t sampling_timer_args = {
         .callback = &sampling_timer_callback,
@@ -55,7 +58,9 @@ void create_sampling_timer() {
     esp_timer_start_periodic(sampling_timer_handle, SAMPLING_PERIOD_US);
 }
 
-
+// Callback function for the sampling timer. It takes the samples and stores them in the samples array.
+// If the samples are taken correctly (checking that the first sample is 0 mV and
+// the last to be below a certain value), it stops the timer.
 void sampling_timer_callback(){
     //taskENTER_CRITICAL();
     samples[current_samples] = get_adc_voltage_mv(ADC_UNIT_1, ADC_CHANNEL_0);
@@ -70,7 +75,7 @@ void sampling_timer_callback(){
     }
 
     if(current_samples == SAMPLES_AMMOUNT){;
-        if(samples[current_samples-1] < (142.0+60.0)){
+        if(samples[current_samples-1] < LAST_SAMPLE_THRESHOLD){
             ESP_LOGI(TAG_POWER, "Samples taken");
             samples_taken = true;
             esp_timer_stop(sampling_timer_handle);
@@ -80,6 +85,7 @@ void sampling_timer_callback(){
     }
 }
 
+// Function to scale the samples from the array to the actual voltage values, before the transformer,
 void scale_samples(){
     for(int i = 0; i < SAMPLES_AMMOUNT; i++){
         samples[i] /= 1000.0;
@@ -91,6 +97,8 @@ void scale_samples(){
     }
 }
 
+// Function to get the Vrms value from the samples array with a given delay in steps, that should be
+// the same steps from the control system.
 float getVrms(int delay_steps){
     float sum = 0;
 
@@ -107,6 +115,8 @@ float getVrms(int delay_steps){
 //
 
 // Task-related functions
+
+// Function that creates the power-related tasks
 void create_power_tasks(){
     xTaskCreatePinnedToCore(&vTaskPower,
                             "Power read task",
@@ -117,10 +127,15 @@ void create_power_tasks(){
                             1);
 }
 
+// Function that deletes the power-related tasks
 void delete_power_tasks(){
     vTaskDelete(xTaskPower_handle);
 }
 
+// Main power task. It wait for a semaphore to be released from the webserver when a power value
+// must be measured. It then takes the samples, scales them and releases a semaphore for the
+// control system task to get a steps delay value. Once the vrms value is calculated, it sends
+// the power value to a queue for the webserver to read.
 void vTaskPower(){
     xQueuePower = xQueueCreate(1, sizeof(float));
     xSemaphorePower = xSemaphoreCreateBinary();
