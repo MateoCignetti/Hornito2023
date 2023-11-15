@@ -11,10 +11,10 @@
 #define ADC_DEBUGGING_TASK_DELAY_MS 1000        // Defines the period of the ADC debugging task mentioned above
 
 // Global variables
-static const int ADC1_CHANNELS[] = {ADC_CHANNEL_0, ADC_CHANNEL_3}; // Defines the channels to be configured on ADC1
-static const int ADC2_CHANNELS[] = {};                                                           // Defines the channels to be configured on ADC2
-static const int ADC1_CHANNEL_COUNT = sizeof(ADC1_CHANNELS) / sizeof(int);
-static const int ADC2_CHANNEL_COUNT = sizeof(ADC2_CHANNELS) / sizeof(int);
+static const int ADC1_CHANNELS[] = {ADC_CHANNEL_0, ADC_CHANNEL_3, ADC_CHANNEL_6};   // Defines the channels to be configured on ADC1
+static const int ADC2_CHANNELS[] = {};                                              // Defines the channels to be configured on ADC2
+static const int ADC1_CHANNEL_COUNT = sizeof(ADC1_CHANNELS) / sizeof(int);          // Defines the number of channels to be configured on ADC1
+static const int ADC2_CHANNEL_COUNT = sizeof(ADC2_CHANNELS) / sizeof(int);          // Defines the number of channels to be configured on ADC2
 //
 
 // ESP-LOG Tags
@@ -46,11 +46,15 @@ static void vTaskReadAllChannels();
 //
 
 // Functions
+
+// Initializes both ADC units, should be called from main.c
 void adc_init(){
     adc1_init();
     adc2_init();
 }
 
+
+// Creates the onesht unit, calibrates and configures the channels for ADC1
 void adc1_init(){
     if(ADC1_CHANNEL_COUNT > 0){
         adc1_create_oneshot_unit();
@@ -63,6 +67,8 @@ void adc1_init(){
     }
 }
 
+
+// Creates the oneshot unit, calibrates and configures the channels for ADC2
 void adc2_init(){
     if(ADC2_CHANNEL_COUNT > 0){
         adc2_create_oneshot_unit();
@@ -75,7 +81,7 @@ void adc2_init(){
     }
 }
 
-
+// Creates the oneshot unit for ADC1
 static void adc1_create_oneshot_unit(){
     adc_oneshot_unit_init_cfg_t adc1_init_config = {
         .unit_id = ADC_UNIT_1,
@@ -85,6 +91,7 @@ static void adc1_create_oneshot_unit(){
     ESP_LOGI(TAG_ADC, "ADC1 Oneshot created");
 }
 
+// Creates the oneshot unit for ADC2
 static void adc2_create_oneshot_unit(){
     adc_oneshot_unit_init_cfg_t adc2_init_config = {
         .unit_id = ADC_UNIT_2,
@@ -94,6 +101,7 @@ static void adc2_create_oneshot_unit(){
     ESP_LOGI(TAG_ADC, "ADC2 Oneshot created");
 }
 
+// Calibrates ADC1
 static void adc1_calibration(){
     adc_cali_line_fitting_config_t adc1_cali_config = {
             .unit_id = ADC_UNIT_1,
@@ -105,6 +113,7 @@ static void adc1_calibration(){
     ESP_LOGI(TAG_ADC, "ADC1 Calibration completed");
 }
 
+// Calibrates ADC2
 static void adc2_calibration(){
     adc_cali_line_fitting_config_t adc2_cali_config = {
             .unit_id = ADC_UNIT_2,
@@ -116,6 +125,7 @@ static void adc2_calibration(){
     ESP_LOGI(TAG_ADC, "ADC2 Calibration completed");
 }
 
+// Configures the defined channels for ADC1
 static void adc1_configure_channels(){
     adc_oneshot_chan_cfg_t adc1_channel_configs[ADC1_CHANNEL_COUNT];
     for(int i = 0; i < ADC1_CHANNEL_COUNT; i++){
@@ -127,6 +137,7 @@ static void adc1_configure_channels(){
     }
 }
 
+// Configures the defined channels for ADC2
 static void adc2_configure_channels(){
     adc_oneshot_chan_cfg_t adc2_channel_configs[ADC2_CHANNEL_COUNT];
     for(int i = 0; i < ADC2_CHANNEL_COUNT; i++){
@@ -138,6 +149,7 @@ static void adc2_configure_channels(){
     }
 }
 
+// Returns the voltage in mV from the ADC
 int get_adc_voltage_mv(adc_unit_t ADC_UNIT, adc_channel_t ADC_CHANNEL){
     adc_oneshot_unit_handle_t adc_handle = NULL;
     adc_cali_handle_t adc_cali_handle = NULL;
@@ -158,6 +170,7 @@ int get_adc_voltage_mv(adc_unit_t ADC_UNIT, adc_channel_t ADC_CHANNEL){
     return adc_voltage_mv;
 }
 
+// Returns the voltage in mV from the ADC with multisampling
 int get_adc_voltage_mv_multisampling(adc_unit_t ADC_UNIT, adc_channel_t ADC_CHANNEL){
     adc_oneshot_unit_handle_t adc_handle = NULL;
     adc_cali_handle_t adc_cali_handle = NULL;
@@ -187,6 +200,7 @@ int get_adc_voltage_mv_multisampling(adc_unit_t ADC_UNIT, adc_channel_t ADC_CHAN
     return adc_voltage_mv;      //Defined as an int because VSCODE doesn't like uint16_t
 }
 
+// Creates the ADC-related tasks
 void create_adc_tasks(){
     #if ADC_DEBUGGING_TASK
     xTaskCreatePinnedToCore(vTaskReadAllChannels,
@@ -202,7 +216,8 @@ void create_adc_tasks(){
 
 // FreeRTOS Tasks
 #if ADC_DEBUGGING_TASK
-static void vTaskReadAllChannels(){  //Only used for debugging
+// Task that reads all configured channels every 5 seconds. Note: This task is only used for debugging and should not be used in production
+static void vTaskReadAllChannels(){ 
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while(true){
         for(int i = 0; i < ADC1_CHANNEL_COUNT; i++){
