@@ -3,14 +3,17 @@
 // Defines
 #define TASK_CONTROL_SYSTEM_DELAY_MS 2000                               // Milisenconds to wait in the control system tasks
 #define US_TO_STEPS 400                                                 // Conversion from microseconds to steps
-#define TASK_MONITOR_DELAY_MS 2000                                      // Miliseconds to wait in the monitor task
+#define CONTROL_MONITORING_TASK 1                                       // Defines and creates a task that monitors the control system tasks
+#define CONTROL_MONITORING_TASK_DELAY_MS 2000                           // Defines the period of the control system monitoring task mentioned above
 
 // Handles
 static TaskHandle_t xTaskControlSystemGetTemperature_handle = NULL;     // Handle for the get temperature
 static TaskHandle_t xTaskControlSystemSendTemperature_handle = NULL;    // Handle for the send temperature
 static TaskHandle_t xTaskControlSystemDecision_handle = NULL;           // Handle for the decision
 static TaskHandle_t xTaskControlSystemSendSteps_handle = NULL;          // Handle for the send steps
+#if CONTROL_MONITORING_TASK
 static TaskHandle_t xTaskControlSystemMonitor_handle = NULL;            // Handle for the monitor
+#endif
 static SemaphoreHandle_t mutexControlSystem = NULL;                     // Mutex to indicate that entry in the critical section
 //
 
@@ -29,11 +32,16 @@ const static char* TAG_CONTROL = "CONTROL";                             // Tag f
 //
 
 // Function prototypes
+void create_control_system_tasks();
+void create_control_system_semaphores_queues();
+void delete_control_system_tasks();
 static void vTaskControlSystemDecision();
 static void vTaskControlSystemGetTemperature();
 static void vTaskControlSystemSendTemperature();
 static void vTaskControlSystemSendSteps();
+#if CONTROL_MONITORING_TASK
 static void vTaskControlSystemMonitor();
+#endif
 //
 
 // Functions
@@ -74,7 +82,7 @@ void create_control_system_tasks(){
                             tskIDLE_PRIORITY + 4,
                             &xTaskControlSystemSendSteps_handle,
                             0); 
-
+    #if CONTROL_MONITORING_TASK
     xTaskCreatePinnedToCore(vTaskControlSystemMonitor,
                             "Control System Monitor Task",
                             configMINIMAL_STACK_SIZE * 5,
@@ -82,6 +90,7 @@ void create_control_system_tasks(){
                             tskIDLE_PRIORITY + 1,
                             &xTaskControlSystemMonitor_handle,
                             1);
+    #endif
 
 }
 
@@ -99,7 +108,9 @@ void delete_control_system_tasks(){
     vTaskDelete(xTaskControlSystemSendTemperature_handle);
     vTaskDelete(xTaskControlSystemDecision_handle);
     vTaskDelete(xTaskControlSystemSendSteps_handle);
+    #if CONTROL_MONITORING_TASK
     vTaskDelete(xTaskControlSystemMonitor_handle);
+    #endif
 }
 //
 
@@ -189,37 +200,15 @@ static void vTaskControlSystemSendSteps(){
 }
 
 // Monitor the tasks. Debugging function to monitor the tasks memory.
+#if CONTROL_MONITORING_TASK
 static void vTaskControlSystemMonitor(){
     while (true) {
-        if(xTaskControlSystemGetTemperature_handle != NULL){ 
-            UBaseType_t taskGetTemperature_memory = uxTaskGetStackHighWaterMark(xTaskControlSystemGetTemperature_handle);
-            ESP_LOGW(TAG_CONTROL, "Task leer temp: %u bytes", taskGetTemperature_memory);
-            if(taskGetTemperature_memory == 0){
-                xTaskControlSystemGetTemperature_handle = NULL;
-            }
-        }
-        if(xTaskControlSystemSendTemperature_handle != NULL){ 
-            UBaseType_t taskSendTemperature_memory = uxTaskGetStackHighWaterMark(xTaskControlSystemSendTemperature_handle);
-            ESP_LOGW(TAG_CONTROL, "Task leer temp: %u bytes", taskSendTemperature_memory);
-            if(taskSendTemperature_memory == 0){
-                xTaskControlSystemSendTemperature_handle = NULL;
-            }
-        }
-        if(xTaskControlSystemDecision_handle != NULL){ 
-            UBaseType_t taskDecision_memory = uxTaskGetStackHighWaterMark(xTaskControlSystemDecision_handle);
-            ESP_LOGW(TAG_CONTROL, "Task leer temp: %u bytes", taskDecision_memory);
-            if(taskDecision_memory == 0){
-                xTaskControlSystemDecision_handle = NULL;
-            }
-        }
-        if(xTaskControlSystemSendSteps_handle != NULL){ 
-            UBaseType_t taskSendSteps_memory = uxTaskGetStackHighWaterMark(xTaskControlSystemSendSteps_handle);
-            ESP_LOGW(TAG_CONTROL, "Task leer temp: %u bytes", taskSendSteps_memory);
-            if(taskSendSteps_memory == 0){
-                xTaskControlSystemSendSteps_handle = NULL;
-            }
-        }        
-        vTaskDelay(pdMS_TO_TICKS(TASK_MONITOR_DELAY_MS));
+        ESP_LOGW(TAG_CONTROL, "Control task get temperature: %u bytes", uxTaskGetStackHighWaterMark(xTaskControlSystemGetTemperature_handle));
+        ESP_LOGW(TAG_CONTROL, "Control task send temperature: %u bytes", uxTaskGetStackHighWaterMark(xTaskControlSystemSendTemperature_handle));
+        ESP_LOGW(TAG_CONTROL, "Control task decision: %u bytes", uxTaskGetStackHighWaterMark(xTaskControlSystemDecision_handle));
+        ESP_LOGW(TAG_CONTROL, "Control task send steps: %u bytes", uxTaskGetStackHighWaterMark(xTaskControlSystemSendSteps_handle));
+        vTaskDelay(pdMS_TO_TICKS(CONTROL_MONITORING_TASK_DELAY_MS));
     }
 }
+#endif
 //
