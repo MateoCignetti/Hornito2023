@@ -11,12 +11,15 @@
 #include "dimmer.h"
 #include "ntc.h"
 
+// Function to create the control system tasks
 void create_control_system_tasks();
+
+// Function to delete the control system tasks
 void delete_control_system_tasks();
 
-extern QueueHandle_t xQueueControlSystem;
-extern SemaphoreHandle_t xSemaphoreControlSystem;
-extern SemaphoreHandle_t xSemaphoreControlSystemToPower;
-extern QueueHandle_t xQueueControlSystemToPower;
+extern QueueHandle_t xQueueControlSystem;                   // Queue to send temperature to web
+extern SemaphoreHandle_t xSemaphoreControlSystem;           // Semaphore to indicate that temperature is ready to send
+extern SemaphoreHandle_t xSemaphoreControlSystemToPower;    // Semaphore to indicate that steps are ready to send
+extern QueueHandle_t xQueueControlSystemToPower;            // Queue to send steps to power
 
 #endif

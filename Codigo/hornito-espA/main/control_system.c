@@ -1,35 +1,34 @@
 #include "control_system.h"
 
 // Defines
-#define TASK_CONTROL_SYSTEM_DELAY_MS 2000
-#define US_TO_STEPS 400
-#define TASK_MONITOR_DELAY_MS 2000
+#define TASK_CONTROL_SYSTEM_DELAY_MS 2000                               // Milisenconds to wait in the control system tasks
+#define US_TO_STEPS 400                                                 // Conversion from microseconds to steps
+#define TASK_MONITOR_DELAY_MS 2000                                      // Miliseconds to wait in the monitor task
 
 // Handles
-static TaskHandle_t xTaskControlSystemGetTemperature_handle = NULL;
-static TaskHandle_t xTaskControlSystemSendTemperature_handle = NULL;
-static TaskHandle_t xTaskControlSystemDecision_handle = NULL;
-static TaskHandle_t xTaskControlSystemSendSteps_handle = NULL;
-static TaskHandle_t xTaskControlSystemMonitor_handle = NULL;
-static SemaphoreHandle_t mutexControlSystem = NULL;
-//
-
-// ESP-LOG Tags
-const static char* TAG_CONTROL = "CONTROL";
+static TaskHandle_t xTaskControlSystemGetTemperature_handle = NULL;     // Handle for the get temperature
+static TaskHandle_t xTaskControlSystemSendTemperature_handle = NULL;    // Handle for the send temperature
+static TaskHandle_t xTaskControlSystemDecision_handle = NULL;           // Handle for the decision
+static TaskHandle_t xTaskControlSystemSendSteps_handle = NULL;          // Handle for the send steps
+static TaskHandle_t xTaskControlSystemMonitor_handle = NULL;            // Handle for the monitor
+static SemaphoreHandle_t mutexControlSystem = NULL;                     // Mutex to indicate that entry in the critical section
 //
 
 // Global variables
-static float setPointTemperature = 60.0;
-static float temperature = 25.0;
-int dimmer_delay_us = 9600;
-QueueHandle_t xQueueControlSystem;
-SemaphoreHandle_t xSemaphoreControlSystem;
-QueueHandle_t xQueueControlSystemToPower;
-SemaphoreHandle_t xSemaphoreControlSystemToPower;
+static float setPointTemperature = 60.0;                                // Value of set point temperature
+static float temperature = 25.0;                                        // Initial value of temperature
+int dimmer_delay_us = 9600;                                             // Initial value of dimmer delay in microseconds
+QueueHandle_t xQueueControlSystem;                                      // Queue to send temperature to web
+SemaphoreHandle_t xSemaphoreControlSystem;                              // Semaphore to indicate that temperature is ready to send
+QueueHandle_t xQueueControlSystemToPower;                               // Queue to send steps to power
+SemaphoreHandle_t xSemaphoreControlSystemToPower;                       // Semaphore to indicate that steps are ready to send
+//
+
+// ESP-LOG Tags
+const static char* TAG_CONTROL = "CONTROL";                             // Tag for the control system
 //
 
 // Function prototypes
-static void create_control_system_mutex();
 static void vTaskControlSystemDecision();
 static void vTaskControlSystemGetTemperature();
 static void vTaskControlSystemSendTemperature();
@@ -37,7 +36,8 @@ static void vTaskControlSystemSendSteps();
 static void vTaskControlSystemMonitor();
 //
 
-// Task
+// Functions
+// Create tasks and mutex for control system
 void create_control_system_tasks(){
     xTaskCreatePinnedToCore(vTaskControlSystemGetTemperature,
                             "Control System Get Temperature Task",
@@ -79,9 +79,12 @@ void create_control_system_tasks(){
                             &xTaskControlSystemMonitor_handle,
                             1);
 
-    create_control_system_mutex();
+    if (mutexControlSystem == NULL) {
+        mutexControlSystem = xSemaphoreCreateMutex();
+    }
 }
 
+// Delete tasks for control system
 void delete_control_system_tasks(){
     vTaskDelete(xTaskControlSystemGetTemperature_handle);
     vTaskDelete(xTaskControlSystemSendTemperature_handle);
@@ -92,6 +95,8 @@ void delete_control_system_tasks(){
 //
 
 // Task function
+// Get temperature from NTC. Before get the temperature, the mutex is taken to indicate that the critical section is in use,
+// and then the mutex is given to indicate that the critical section is free, when the temperature is got. 
 static void vTaskControlSystemGetTemperature(){
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while (true) {
@@ -104,6 +109,9 @@ static void vTaskControlSystemGetTemperature(){
     }
 }
 
+// Send temperature to web. First queue and semaphore are created that used to send temperature to web. In the while loop,
+// the semaphore is taken to indicate the temperature is ready to send, and then the mutex is taken to indicate that
+// critical section is in use. Finally, the temperature is sent to web and the mutex is given.
 static void vTaskControlSystemSendTemperature(){
     if(xQueueControlSystem == NULL){
         xQueueControlSystem = xQueueCreate(1, sizeof(float));
@@ -125,6 +133,9 @@ static void vTaskControlSystemSendTemperature(){
     }
 }
 
+// Decision of the control system. First the mutex is taken, and then set temperature difference is calculated, between
+// set point temperature and temperature. Finally, the dimmer delay is set according to the temperature difference and it sends
+// its value to the dimmer task.
 static void vTaskControlSystemDecision(){
     int temperatureDifference = 0.0;
     TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -157,6 +168,8 @@ static void vTaskControlSystemDecision(){
     }
 }
 
+// Send steps to power. Queue and Semaphore are created at the same form as vTaskControlSystemSendTemperature()
+// In the while loop, It sets the steps according to the dimmer delay and sends its value to power task.
 static void vTaskControlSystemSendSteps(){
     if(xQueueControlSystemToPower == NULL){
         xQueueControlSystemToPower = xQueueCreate(1, sizeof(float));
@@ -181,6 +194,7 @@ static void vTaskControlSystemSendSteps(){
     }
 }
 
+// Monitor the tasks. Debugging function to monitor the tasks memory.
 static void vTaskControlSystemMonitor(){
     while (true) {
         if(xTaskControlSystemGetTemperature_handle != NULL){ 
@@ -212,14 +226,6 @@ static void vTaskControlSystemMonitor(){
             }
         }        
         vTaskDelay(pdMS_TO_TICKS(TASK_MONITOR_DELAY_MS));
-    }
-}
-//
-
-// Functions
-void create_control_system_mutex(){
-    if (mutexControlSystem == NULL) {
-        mutexControlSystem = xSemaphoreCreateMutex();
     }
 }
 //
