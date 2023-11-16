@@ -39,6 +39,7 @@ void sampling_timer_callback();
 void scale_samples();
 float getVrms(int delay_steps);
 void create_power_tasks();
+void create_power_semaphores_queues();
 void vTaskPower();
 //
 
@@ -127,6 +128,11 @@ void create_power_tasks(){
                             0);
 }
 
+void create_power_semaphores_queues(){
+    xQueuePower = xQueueCreate(1, sizeof(float));
+    xSemaphorePower = xSemaphoreCreateBinary();
+}
+
 // Function that deletes the power-related tasks
 void delete_power_tasks(){
     vTaskDelete(xTaskPower_handle);
@@ -137,8 +143,7 @@ void delete_power_tasks(){
 // control system task to get a steps delay value. Once the vrms value is calculated, it sends
 // the power value to a queue for the webserver to read.
 void vTaskPower(){
-    xQueuePower = xQueueCreate(1, sizeof(float));
-    xSemaphorePower = xSemaphoreCreateBinary();
+    
     TickType_t xLastWakeTime = xTaskGetTickCount();
     int delay_steps = 0;
 

@@ -14,6 +14,9 @@
 // Function to create the control system tasks
 void create_control_system_tasks();
 
+// Function to create the control system semaphores and queues
+void create_control_system_semaphores_queues();
+
 // Function to delete the control system tasks
 void delete_control_system_tasks();
 
