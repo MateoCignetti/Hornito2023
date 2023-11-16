@@ -20,6 +20,9 @@
 #define ZERO_VOLTAGE_LOW_THRESHOLD 120.0                            // Low value threshold for a to be considered 0 mV
 #define ZERO_VOLTAGE_HIGH_THRESHOLD 150.0                           // High value threshold for a sample to be considered 0 mV
 #define LAST_SAMPLE_THRESHOLD (ZERO_VOLTAGE_HIGH_THRESHOLD + 45.0)  // Threshold for the last sample to be considered correct
+
+#define POWER_MONITORING_TASK 0                                     // Enables the power monitoring task
+#define MONITORING_DELAY_MS 2000                                    // Delay between power readings in milliseconds
 //
 
 // Global variables
@@ -31,16 +34,22 @@ static esp_timer_handle_t sampling_timer_handle = NULL;             // Handle fo
 SemaphoreHandle_t xSemaphorePower;                                  // Semaphore to indicate that the power value should be read
 QueueHandle_t xQueuePower;                                          // Queue to send the power value
 static TaskHandle_t xTaskPower_handle = NULL;                       // Handle for the power task
+#if POWER_MONITORING_TASK
+static TaskHandle_t xTaskPowerMonitoring_handle = NULL;             // Handle for the power monitoring task
+#endif
 //
 
 // Function prototypes
 void create_sampling_timer();
 void sampling_timer_callback();
-void scale_samples();
-float getVrms(int delay_steps);
+static void scale_samples();
+static float getVrms(int delay_steps);
 void create_power_tasks();
 void create_power_semaphores_queues();
-void vTaskPower();
+static void vTaskPower();
+#if POWER_MONITORING_TASK
+static void vTaskPowerMonitoring();
+#endif
 //
 
 // General functions
@@ -87,7 +96,7 @@ void sampling_timer_callback(){
 }
 
 // Function to scale the samples from the array to the actual voltage values, before the transformer,
-void scale_samples(){
+static void scale_samples(){
     for(int i = 0; i < SAMPLES_AMMOUNT; i++){
         samples[i] /= 1000.0;
         if(samples[i] < 0.15){
@@ -100,7 +109,7 @@ void scale_samples(){
 
 // Function to get the Vrms value from the samples array with a given delay in steps, that should be
 // the same steps from the control system.
-float getVrms(int delay_steps){
+static float getVrms(int delay_steps){
     float sum = 0;
 
     for(int i = 0; i < SAMPLES_AMMOUNT; i++){
@@ -126,6 +135,15 @@ void create_power_tasks(){
                             tskIDLE_PRIORITY + 5,
                             NULL,
                             0);
+    #if POWER_MONITORING_TASK
+    xTaskCreatePinnedToCore(&vTaskPowerMonitoring,
+                            "Power monitoring task",
+                            configMINIMAL_STACK_SIZE * 5,
+                            &xTaskPowerMonitoring_handle,
+                            tskIDLE_PRIORITY + 1,
+                            NULL,
+                            0);
+    #endif
 }
 
 void create_power_semaphores_queues(){
@@ -137,13 +155,17 @@ void create_power_semaphores_queues(){
 // Function that deletes the power-related tasks
 void delete_power_tasks(){
     vTaskDelete(xTaskPower_handle);
+
+    #if POWER_MONITORING_TASK
+    vTaskDelete(xTaskPowerMonitoring_handle);
+    #endif
 }
 
 // Main power task. It wait for a semaphore to be released from the webserver when a power value
 // must be measured. It then takes the samples, scales them and releases a semaphore for the
 // control system task to get a steps delay value. Once the vrms value is calculated, it sends
 // the power value to a queue for the webserver to read.
-void vTaskPower(){
+static void vTaskPower(){
     TickType_t xLastWakeTime = xTaskGetTickCount();
     int delay_steps = 0;
 
@@ -173,7 +195,16 @@ void vTaskPower(){
             }
         }
     }
-
-    vTaskDelete(NULL); // Deletes the task in case the while loop breaks
 }
+
+
+#if POWER_MONITORING_TASK
+// Power monitoring task. It reads the power value from the queue and sends it to the webserver.
+static void vTaskPowerMonitoring(){
+    while(true){
+        ESP_LOGW(TAG_POWER, "Power task stack size: %d", uxTaskGetStackHighWaterMark(xTaskPower_handle));
+        vTaskDelay(pdMS_TO_TICKS(MONITORING_DELAY_MS));
+    }
+}
+#endif
 //
