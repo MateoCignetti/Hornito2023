@@ -54,7 +54,7 @@ void setup_dimmer_isr(){
 void create_dimmer_task(){
     xTaskCreatePinnedToCore(vTaskDimmer,
                             "Dimmer Task",
-                            configMINIMAL_STACK_SIZE * 2,
+                            configMINIMAL_STACK_SIZE * 5,
                             NULL,
                             tskIDLE_PRIORITY + 6,
                             &xTaskDimmer_handle,

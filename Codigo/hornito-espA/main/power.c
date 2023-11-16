@@ -17,20 +17,20 @@
 #define INTERIOR_RESISTOR_O 33.5                                    // Interior resistor in Ohms
 //#define EXTERIOR_RESISTOR_O 217.5                                 // Exterior resistor in Ohms
 #define RECEIVE_STEPS_TIMEOUT_MS 5000                               // Timeout for receiving steps from control system in milliseconds
-#define ZERO_VOLTAGE_LOW_THRESHOLD 120                              // Low value threshold for a to be considered 0 mV
-#define ZERO_VOLTAGE_HIGH_THRESHOLD 150                             // High value threshold for a sample to be considered 0 mV
-#define LAST_SAMPLE_THRESHOLD (ZERO_VOLTAGE_HIGH_THRESHOLD + 45)    // Threshold for the last sample to be considered correct
+#define ZERO_VOLTAGE_LOW_THRESHOLD 120.0                            // Low value threshold for a to be considered 0 mV
+#define ZERO_VOLTAGE_HIGH_THRESHOLD 150.0                           // High value threshold for a sample to be considered 0 mV
+#define LAST_SAMPLE_THRESHOLD (ZERO_VOLTAGE_HIGH_THRESHOLD + 45.0)  // Threshold for the last sample to be considered correct
 //
 
 // Global variables
-static const char* TAG_POWER = "POWER";                         // Tag for logging
-static int current_samples = 0;                                 // Samples counter for the sampling timer
-static int samples[SAMPLES_AMMOUNT];                            // Array to store the samples
-static bool samples_taken = false;                              // Flag to indicate if the samples were taken
-static esp_timer_handle_t sampling_timer_handle = NULL;         // Handle for the sampling timer     
-SemaphoreHandle_t xSemaphorePower;                              // Semaphore to indicate that the power value should be read
-QueueHandle_t xQueuePower;                                      // Queue to send the power value
-static TaskHandle_t xTaskPower_handle = NULL;                   // Handle for the power task
+static const char* TAG_POWER = "POWER";                             // Tag for logging
+static int current_samples = 0;                                     // Samples counter for the sampling timer
+static float samples[SAMPLES_AMMOUNT];                              // Array to store the samples
+static bool samples_taken = false;                                  // Flag to indicate if the samples were taken
+static esp_timer_handle_t sampling_timer_handle = NULL;             // Handle for the sampling timer     
+SemaphoreHandle_t xSemaphorePower;                                  // Semaphore to indicate that the power value should be read
+QueueHandle_t xQueuePower;                                          // Queue to send the power value
+static TaskHandle_t xTaskPower_handle = NULL;                       // Handle for the power task
 //
 
 // Function prototypes
@@ -121,7 +121,7 @@ float getVrms(int delay_steps){
 void create_power_tasks(){
     xTaskCreatePinnedToCore(&vTaskPower,
                             "Power read task",
-                            configMINIMAL_STACK_SIZE * 2,
+                            configMINIMAL_STACK_SIZE * 5,
                             &xTaskPower_handle,
                             tskIDLE_PRIORITY + 5,
                             NULL,
@@ -131,6 +131,7 @@ void create_power_tasks(){
 void create_power_semaphores_queues(){
     xQueuePower = xQueueCreate(1, sizeof(float));
     xSemaphorePower = xSemaphoreCreateBinary();
+    ESP_LOGI(TAG_POWER, "Power queue and semaphore created");
 }
 
 // Function that deletes the power-related tasks

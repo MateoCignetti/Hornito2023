@@ -75,10 +75,13 @@ static const httpd_uri_t save_shutodwn = {
 // Functions
 // Create the data update task and mutex to access data struct.
 static void create_data_tasks(){ 
+    if(mutexData == NULL){
+        mutexData = xSemaphoreCreateMutex();
+    }
 
     xTaskCreatePinnedToCore(vTaskUpdateData,
                             "vTaskUpdateData",
-                            configMINIMAL_STACK_SIZE * 3,
+                            configMINIMAL_STACK_SIZE * 5,
                             NULL,
                             tskIDLE_PRIORITY + 4,
                             &xTaskUpdateData_handle,
@@ -87,15 +90,12 @@ static void create_data_tasks(){
 
     xTaskCreatePinnedToCore(xTaskUpdateData_Monitoring,
                            "vTaskUpdateData Monitoring",
-                            configMINIMAL_STACK_SIZE * 2,
+                            configMINIMAL_STACK_SIZE * 5,
                             NULL,
                             tskIDLE_PRIORITY + 1,
                             &xTaskUpdateData_Monitoring_handle,
                             0);
 
-    if (mutexData == NULL) {
-        mutexData = xSemaphoreCreateMutex();
-    }
 }
 
 // Task function for updating data struct periodically.
@@ -110,7 +110,7 @@ static void vTaskUpdateData(){
         float hotTempValue = 0.0;
         //float coldTempValue = 0.0;
         
-        if(xQueueReceive( xQueuePower , &powerValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){                // Check and process queue data.
+        if(xQueueReceive( xQueuePower , &powerValue,  portMAX_DELAY)){                // Check and process queue data.
             if (xSemaphoreTake(mutexData, portMAX_DELAY)) {
                 sprintf(measurements[data_n].potencia, "%.2f", powerValue);                                 // Convert value to a string and store it in data struct.
                 xSemaphoreGive(mutexData);
@@ -119,7 +119,7 @@ static void vTaskUpdateData(){
             ESP_LOGE("vTaskUpdateData", "Power Queue timeout");
         }
         
-        if(xQueueReceive( xQueueControlSystem , &hotTempValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){
+        if(xQueueReceive( xQueueControlSystem , &hotTempValue,  portMAX_DELAY)){
             if(xSemaphoreTake(mutexData, portMAX_DELAY)){
                 sprintf(measurements[data_n].temperaturaPC, "%.2f", hotTempValue);
                 xSemaphoreGive(mutexData);

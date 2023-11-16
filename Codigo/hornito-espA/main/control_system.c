@@ -39,9 +39,13 @@ static void vTaskControlSystemMonitor();
 // Functions
 // Create tasks and mutex for control system
 void create_control_system_tasks(){
+    if(mutexControlSystem == NULL){
+        mutexControlSystem = xSemaphoreCreateMutex();
+    }
+    
     xTaskCreatePinnedToCore(vTaskControlSystemGetTemperature,
                             "Control System Get Temperature Task",
-                            configMINIMAL_STACK_SIZE * 2,
+                            configMINIMAL_STACK_SIZE * 5,
                             NULL,
                             tskIDLE_PRIORITY + 2,
                             &xTaskControlSystemGetTemperature_handle,
@@ -49,7 +53,7 @@ void create_control_system_tasks(){
 
     xTaskCreatePinnedToCore(vTaskControlSystemSendTemperature,
                             "Control System Send Temperature Task",
-                            configMINIMAL_STACK_SIZE * 2,
+                            configMINIMAL_STACK_SIZE * 5,
                             NULL,
                             tskIDLE_PRIORITY + 3,
                             &xTaskControlSystemSendTemperature_handle,
@@ -57,7 +61,7 @@ void create_control_system_tasks(){
 
     xTaskCreatePinnedToCore(vTaskControlSystemDecision,
                             "Control System Decision Task",
-                            configMINIMAL_STACK_SIZE * 2,
+                            configMINIMAL_STACK_SIZE * 5,
                             NULL,
                             tskIDLE_PRIORITY + 1,
                             &xTaskControlSystemDecision_handle,
@@ -65,7 +69,7 @@ void create_control_system_tasks(){
 
     xTaskCreatePinnedToCore(vTaskControlSystemSendSteps,
                             "Control System Send Steps Task",
-                            configMINIMAL_STACK_SIZE * 2,
+                            configMINIMAL_STACK_SIZE * 5,
                             NULL,
                             tskIDLE_PRIORITY + 4,
                             &xTaskControlSystemSendSteps_handle,
@@ -79,16 +83,14 @@ void create_control_system_tasks(){
                             &xTaskControlSystemMonitor_handle,
                             1);
 
-    if (mutexControlSystem == NULL) {
-        mutexControlSystem = xSemaphoreCreateMutex();
-    }
 }
 
 void create_control_system_semaphores_queues(){
     xSemaphoreControlSystem = xSemaphoreCreateBinary();
     xSemaphoreControlSystemToPower = xSemaphoreCreateBinary();
     xQueueControlSystem = xQueueCreate(1, sizeof(float));
-    xQueueControlSystemToPower = xQueueCreate(1, sizeof(float)); 
+    xQueueControlSystemToPower = xQueueCreate(1, sizeof(float));
+    ESP_LOGI(TAG_CONTROL, "Semaphores and queues created");
 }
 
 // Delete tasks for control system
