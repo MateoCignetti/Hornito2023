@@ -16,7 +16,7 @@
 #include "control_system.h"
 #include "ntc.h"
 #include "power.h"
-
+#include "peltier.h"
 #include "tasks.h"
 
 

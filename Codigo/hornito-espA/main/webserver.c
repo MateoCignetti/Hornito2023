@@ -111,13 +111,13 @@ static void vTaskUpdateData(){
     while(update_while == 1){
         xSemaphoreGive(xSemaphorePower);                                                                    
         xSemaphoreGive(xSemaphoreControlSystem);
-        //xSemaphoreGive(xSemaphorePeltier);
+        xSemaphoreGive(xSemaphorePeltier);
 
         float powerValue = 0.0;
         float hotTempValue = 0.0;
-        //float coldTempValue = 0.0;
+        float coldTempValue = 0.0;
         
-        if(xQueueReceive( xQueuePower , &powerValue,  portMAX_DELAY)){                // Check and process queue data.
+        if(xQueueReceive( xQueuePower , &powerValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){                // Check and process queue data.
             if (xSemaphoreTake(mutexData, portMAX_DELAY)) {
                 sprintf(measurements[data_n].potencia, "%.2f", powerValue);                                 // Convert value to a string and store it in data struct.
                 xSemaphoreGive(mutexData);
@@ -126,7 +126,7 @@ static void vTaskUpdateData(){
             ESP_LOGE(TAG_UPDATE, "Power Queue timeout");
         }
         
-        if(xQueueReceive( xQueueControlSystem , &hotTempValue,  portMAX_DELAY)){
+        if(xQueueReceive( xQueueControlSystem , &hotTempValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){
             if(xSemaphoreTake(mutexData, portMAX_DELAY)){
                 sprintf(measurements[data_n].temperaturaPC, "%.2f", hotTempValue);
                 xSemaphoreGive(mutexData);
@@ -135,20 +135,20 @@ static void vTaskUpdateData(){
             ESP_LOGE(TAG_UPDATE, "Control System Queue timeout");
         }
 
-        /*DEBUG - BORRAR E IMPLEMENTAR QUEUE DE PELTIER*/
+        /*DEBUG - BORRAR E IMPLEMENTAR QUEUE DE PELTIER
 
         if (xSemaphoreTake(mutexData, portMAX_DELAY)) {
             strncpy(measurements[data_n].temperaturaPF, "80.00", TEMP_ARRAY_SIZE);
             xSemaphoreGive(mutexData);
         }
 
-        /*     */
+             */
 
-        /*if(xQueueReceive( xQueuePeltier , &coldTempValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){
+        if(xQueueReceive( xQueuePeltier , &coldTempValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){
             sprintf(measurements[data_n].temperaturaPF, "%.2f", coldTempValue);
         }else{
-            ESP_LOGE("vTaskUpdateData", "Peltier Queue timeout");
-        }*/
+            ESP_LOGE(TAG_UPDATE, "Peltier Queue timeout");
+        }
 
         strncpy(measurements[data_n].tiempo, get_time(), TIME_ARRAY_SIZE); 
 
@@ -199,7 +199,7 @@ esp_err_t time_post_handler(httpd_req_t *req)
 {
     char buf[100];                                                    // Buffer to store POST data.
     int ret, remaining = req->content_len;                            // Remaining bytes to read.
-    
+    update_while = 1;
     create_tasks();
 
     while (remaining > 0) {                                           // Read POST data sent from the form.

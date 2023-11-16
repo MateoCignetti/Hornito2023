@@ -20,6 +20,8 @@
 #define ZERO_VOLTAGE_LOW_THRESHOLD 120.0                            // Low value threshold for a to be considered 0 mV
 #define ZERO_VOLTAGE_HIGH_THRESHOLD 150.0                           // High value threshold for a sample to be considered 0 mV
 #define LAST_SAMPLE_THRESHOLD (ZERO_VOLTAGE_HIGH_THRESHOLD + 45.0)  // Threshold for the last sample to be considered correct
+#define ADC_UNIT ADC_UNIT_1                                         // ADC unit to use
+#define ADC_CHANNEL ADC_CHANNEL_0                                   // ADC channel to use
 
 #define POWER_MONITORING_TASK 0                                     // Enables the power monitoring task
 #define MONITORING_DELAY_MS 2000                                    // Delay between power readings in milliseconds
@@ -73,7 +75,7 @@ void create_sampling_timer() {
 // the last to be below a certain value), it stops the timer.
 void sampling_timer_callback(){
     //taskENTER_CRITICAL();
-    samples[current_samples] = get_adc_voltage_mv(ADC_UNIT_1, ADC_CHANNEL_0);
+    samples[current_samples] = get_adc_voltage_mv(ADC_UNIT, ADC_CHANNEL);
     //taskEXIT_CRITICAL();
 
     if(current_samples == 0){

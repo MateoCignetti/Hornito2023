@@ -3,8 +3,10 @@
 // Defines
 #define TASK_CONTROL_SYSTEM_DELAY_MS 2000                               // Milisenconds to wait in the control system tasks
 #define US_TO_STEPS 400                                                 // Conversion from microseconds to steps
-#define CONTROL_MONITORING_TASK 1                                       // Defines and creates a task that monitors the control system tasks
+#define CONTROL_MONITORING_TASK 0                                       // Defines and creates a task that monitors the control system tasks
 #define CONTROL_MONITORING_TASK_DELAY_MS 2000                           // Defines the period of the control system monitoring task mentioned above
+#define ADC_UNIT ADC_UNIT_1                                             // ADC unit to use
+#define NTC1_CHANNEL ADC_CHANNEL_3                                      // ADC channel to use for NTC1
 
 // Handles
 static TaskHandle_t xTaskControlSystemGetTemperature_handle = NULL;     // Handle for the get temperature
@@ -121,7 +123,7 @@ static void vTaskControlSystemGetTemperature(){
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while (true) {
         if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
-            temperature = get_ntc_temperature_c(get_adc_voltage_mv_multisampling(ADC_UNIT_1, ADC_CHANNEL_3));
+            temperature = get_ntc_temperature_c(get_adc_voltage_mv(ADC_UNIT, NTC1_CHANNEL));
             xSemaphoreGive(mutexControlSystem);
         }
         ESP_LOGI(TAG_CONTROL, "NTC1: %.2f °C", temperature);

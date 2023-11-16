@@ -4,14 +4,14 @@
 #define ADC1_DESIRED_BITWIDTH ADC_BITWIDTH_12   // Defines the desired bitwidth for ADC1
 #define ADC2_DESIRED_BITWIDTH ADC_BITWIDTH_12   // Defines the desired bitwidth for ADC2
 #define MULTISAMPLE_SIZE 10                     // Defines the number of ADC readings to be taken in the multisampling function
-#define MULTISAMPLE_DELAY_MS 10                  // Defines the delay between each ADC reading in the multisampling function
+#define MULTISAMPLE_DELAY_MS 1                  // Defines the delay between each ADC reading in the multisampling function
 
 #define ADC_DEBUGGING_TASK 0                    // Defines and creates a task that reads all configured channels every 5 seconds.
                                                 // Note: This task is only used for debugging and should not be used in production
 #define ADC_DEBUGGING_TASK_DELAY_MS 1000        // Defines the period of the ADC debugging task mentioned above
 
 // Global variables
-static const int ADC1_CHANNELS[] = {ADC_CHANNEL_0, ADC_CHANNEL_3};   // Defines the channels to be configured on ADC1
+static const int ADC1_CHANNELS[] = {ADC_CHANNEL_0, ADC_CHANNEL_3, ADC_CHANNEL_6};   // Defines the channels to be configured on ADC1
 static const int ADC2_CHANNELS[] = {};                                              // Defines the channels to be configured on ADC2
 static const int ADC1_CHANNEL_COUNT = sizeof(ADC1_CHANNELS) / sizeof(int);          // Defines the number of channels to be configured on ADC1
 static const int ADC2_CHANNEL_COUNT = sizeof(ADC2_CHANNELS) / sizeof(int);          // Defines the number of channels to be configured on ADC2

@@ -9,6 +9,7 @@
 #include "webserver.h"
 #include "wifi.h"
 #include "power.h"
+#include "peltier.h"
 
 void initialize_tasks();
 void create_tasks();

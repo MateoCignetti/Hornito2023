@@ -1,8 +1,8 @@
 #include "dimmer.h"
 
 // Defines
-#define PIN_IN GPIO_NUM_34                          // Defines the zero-crossing circuit input pi
-#define PIN_OUT GPIO_NUM_33                         // Defines the TRIAC driver output pin
+#define PIN_IN GPIO_NUM_26                          // Defines the zero-crossing circuit input pi
+#define PIN_OUT GPIO_NUM_27                         // Defines the TRIAC driver output pin
 #define DIMMER_SEMAPHORE_TIMEOUT_MS 11              // Defines the timeout for the dimmer semaphore in milliseconds
 #define PULSE_DELAY_US 10                           // Defines the pulse width of the output signal in microseconds
 
