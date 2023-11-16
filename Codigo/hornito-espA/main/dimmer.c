@@ -10,7 +10,6 @@
 // Handles
 SemaphoreHandle_t xDimmerSemaphore_handle = NULL;   // Defines the dimmer semaphore handle
 TaskHandle_t xTaskDimmer_handle = NULL;             // Defines the dimmer task handle
-static void dimmer_isr();                           // Defines the dimmer ISR
 //
 
 // Global variables
@@ -22,7 +21,6 @@ bool dimmer_enabled = true;                         // Flag to indicate if the d
 // Function prototypes
 static void vTaskDimmer();
 void setup_dimmer_isr();
-static void IRAM_ATTR dimmer_isr();
 void create_dimmer_task();
 void delete_dimmer_task();
 void set_dimmer_delay(int new_dimmer_delay_us);
@@ -31,15 +29,6 @@ void disable_dimmer();
 //
 
 // Functions
-
-// Function to setup the dimmer ISR and semaphore. Should be called from main.c
-void setup_dimmer_isr(){
-    gpio_set_direction(PIN_IN, GPIO_MODE_INPUT);
-    gpio_set_intr_type(PIN_IN, GPIO_INTR_ANYEDGE); // Interrupt on any edge
-    gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
-    gpio_isr_handler_add(PIN_IN, dimmer_isr, NULL);
-    xDimmerSemaphore_handle = xSemaphoreCreateBinary();
-}
 
 // Dimmer ISR. Releases the dimmer semaphore when an edge is detected.
 static void IRAM_ATTR dimmer_isr(){
@@ -50,6 +39,15 @@ static void IRAM_ATTR dimmer_isr(){
     if (xHigherPriorityTaskWoken == pdTRUE) {
         portYIELD_FROM_ISR();
     }
+}
+
+// Function to setup the dimmer ISR and semaphore. Should be called from main.c
+void setup_dimmer_isr(){
+    gpio_set_direction(PIN_IN, GPIO_MODE_INPUT);
+    gpio_set_intr_type(PIN_IN, GPIO_INTR_ANYEDGE); // Interrupt on any edge
+    gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
+    gpio_isr_handler_add(PIN_IN, dimmer_isr, NULL);
+    xDimmerSemaphore_handle = xSemaphoreCreateBinary();
 }
 
 // Creates the dimmer task

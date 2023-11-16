@@ -11,7 +11,7 @@
 #define ADC_DEBUGGING_TASK_DELAY_MS 1000        // Defines the period of the ADC debugging task mentioned above
 
 // Global variables
-static const int ADC1_CHANNELS[] = {ADC_CHANNEL_0, ADC_CHANNEL_3, ADC_CHANNEL_6};   // Defines the channels to be configured on ADC1
+static const int ADC1_CHANNELS[] = {ADC_CHANNEL_0, ADC_CHANNEL_3};   // Defines the channels to be configured on ADC1
 static const int ADC2_CHANNELS[] = {};                                              // Defines the channels to be configured on ADC2
 static const int ADC1_CHANNEL_COUNT = sizeof(ADC1_CHANNELS) / sizeof(int);          // Defines the number of channels to be configured on ADC1
 static const int ADC2_CHANNEL_COUNT = sizeof(ADC2_CHANNELS) / sizeof(int);          // Defines the number of channels to be configured on ADC2
