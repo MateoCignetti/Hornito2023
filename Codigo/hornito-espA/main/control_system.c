@@ -84,6 +84,13 @@ void create_control_system_tasks(){
     }
 }
 
+void create_control_system_semaphores_queues(){
+    xSemaphoreControlSystem = xSemaphoreCreateBinary();
+    xSemaphoreControlSystemToPower = xSemaphoreCreateBinary();
+    xQueueControlSystem = xQueueCreate(1, sizeof(float));
+    xQueueControlSystemToPower = xQueueCreate(1, sizeof(float)); 
+}
+
 // Delete tasks for control system
 void delete_control_system_tasks(){
     vTaskDelete(xTaskControlSystemGetTemperature_handle);
@@ -113,13 +120,6 @@ static void vTaskControlSystemGetTemperature(){
 // the semaphore is taken to indicate the temperature is ready to send, and then the mutex is taken to indicate that
 // critical section is in use. Finally, the temperature is sent to web and the mutex is given.
 static void vTaskControlSystemSendTemperature(){
-    if(xQueueControlSystem == NULL){
-        xQueueControlSystem = xQueueCreate(1, sizeof(float));
-    }
-    
-    if(xSemaphoreControlSystem == NULL){
-        xSemaphoreControlSystem = xSemaphoreCreateBinary();
-    }
     
     while (true) {
         if (xSemaphoreTake(xSemaphoreControlSystem, portMAX_DELAY)) {
@@ -171,14 +171,6 @@ static void vTaskControlSystemDecision(){
 // Send steps to power. Queue and Semaphore are created at the same form as vTaskControlSystemSendTemperature()
 // In the while loop, It sets the steps according to the dimmer delay and sends its value to power task.
 static void vTaskControlSystemSendSteps(){
-    if(xQueueControlSystemToPower == NULL){
-        xQueueControlSystemToPower = xQueueCreate(1, sizeof(float));
-    }
-
-    if(xSemaphoreControlSystemToPower == NULL){
-        xSemaphoreControlSystemToPower = xSemaphoreCreateBinary();
-    }
-
     int steps = 0;
 
     while (true) {
