@@ -80,7 +80,7 @@ static void create_data_tasks(){
                             "vTaskUpdateData",
                             configMINIMAL_STACK_SIZE * 3,
                             NULL,
-                            tskIDLE_PRIORITY + 1,
+                            tskIDLE_PRIORITY + 4,
                             &xTaskUpdateData_handle,
                             1);
    

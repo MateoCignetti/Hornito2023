@@ -123,7 +123,7 @@ void create_power_tasks(){
                             "Power read task",
                             configMINIMAL_STACK_SIZE * 2,
                             &xTaskPower_handle,
-                            tskIDLE_PRIORITY + 1,
+                            tskIDLE_PRIORITY + 5,
                             NULL,
                             0);
 }
@@ -143,7 +143,6 @@ void delete_power_tasks(){
 // control system task to get a steps delay value. Once the vrms value is calculated, it sends
 // the power value to a queue for the webserver to read.
 void vTaskPower(){
-    
     TickType_t xLastWakeTime = xTaskGetTickCount();
     int delay_steps = 0;
 

@@ -5,7 +5,6 @@ void initialize_tasks(){
     create_power_semaphores_queues();
 }
 
-
 // Create FreeRTOS tasks
 void create_tasks(){
     //create_adc_tasks();

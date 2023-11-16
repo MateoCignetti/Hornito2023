@@ -10,6 +10,7 @@
 #include "wifi.h"
 #include "power.h"
 
+void initialize_tasks();
 void create_tasks();
 void delete_tasks();
 
