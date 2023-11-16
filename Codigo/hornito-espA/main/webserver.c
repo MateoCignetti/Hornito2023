@@ -8,6 +8,8 @@
 #define TEMP_ARRAY_SIZE       100                       // Maximum length of temperature string.
 #define UPDATE_DATA_DELAY_MS  5000                      // Period of updating data task.
 #define POWER_QUEUE_DELAY_MS  5000                      // Delay for Queue.
+
+#define DATA_TASK_MONITORING 0
 #define TASK_MONITOR_DELAY_MS 2000                      // Delay for Monitor Task.
 //
 
@@ -28,13 +30,15 @@ static Measurement measurements[DATA_ARRAY_SIZE];       // Array of measurements
 
 // Handles
 static TaskHandle_t xTaskUpdateData_handle;             // Task handle for updating data task.
+#if DATA_TASK_MONITORING
 static TaskHandle_t xTaskUpdateData_Monitoring_handle;  // Task handle for updating data task.
+#endif
 static httpd_handle_t httpd_server = NULL;              // Handle for HTTP server.
 static SemaphoreHandle_t mutexData = NULL;              // Semaphore Handle for mutex.
 //
 
 //ESP-LOG TAGS
-const static char* TAG_UPDATE = "UPDATE DATA TASK";     //TAG for ESP-LOGs.
+const static char* TAG_UPDATE = "Update data task";     //TAG for ESP-LOGs.
 //
 
 // Private function prototypes
@@ -43,7 +47,9 @@ static esp_err_t time_post_handler(httpd_req_t *req);
 static esp_err_t get_data_handler(httpd_req_t *req);
 static esp_err_t save_shutodwn_handler(httpd_req_t *req);
 static void vTaskUpdateData();
-static void xTaskUpdateData_Monitoring();
+#if DATA_TASK_MONITORING
+static void vTaskUpdateData_Monitoring();
+#endif
 //
 
 // URI handlers
@@ -87,14 +93,15 @@ static void create_data_tasks(){
                             &xTaskUpdateData_handle,
                             1);
    
-
-    xTaskCreatePinnedToCore(xTaskUpdateData_Monitoring,
+    #if DATA_TASK_MONITORING
+    xTaskCreatePinnedToCore(vTaskUpdateData_Monitoring,
                            "vTaskUpdateData Monitoring",
                             configMINIMAL_STACK_SIZE * 5,
                             NULL,
                             tskIDLE_PRIORITY + 1,
                             &xTaskUpdateData_Monitoring_handle,
                             0);
+    #endif
 
 }
 
@@ -116,7 +123,7 @@ static void vTaskUpdateData(){
                 xSemaphoreGive(mutexData);
             }
         }else{
-            ESP_LOGE("vTaskUpdateData", "Power Queue timeout");
+            ESP_LOGE(TAG_UPDATE, "Power Queue timeout");
         }
         
         if(xQueueReceive( xQueueControlSystem , &hotTempValue,  portMAX_DELAY)){
@@ -125,7 +132,7 @@ static void vTaskUpdateData(){
                 xSemaphoreGive(mutexData);
             }
         }else{
-            ESP_LOGE("vTaskUpdateData", "Control System Queue timeout");
+            ESP_LOGE(TAG_UPDATE, "Control System Queue timeout");
         }
 
         /*DEBUG - BORRAR E IMPLEMENTAR QUEUE DE PELTIER*/
@@ -151,13 +158,15 @@ static void vTaskUpdateData(){
     vTaskDelete(NULL);                                                                                      // Self-delete the task when the loop exits.
 }
 
+#if DATA_TASK_MONITORING
 // Task function for monitoring the stack usage of the 'xTaskUpdateData' task.
-static void xTaskUpdateData_Monitoring(){
+static void vTaskUpdateData_Monitoring(){
     while(true){
         ESP_LOGW(TAG_UPDATE, "Task Update Data: %u bytes", uxTaskGetStackHighWaterMark(xTaskUpdateData_handle));
         vTaskDelay(pdMS_TO_TICKS(TASK_MONITOR_DELAY_MS));           
     }
 }
+#endif
 
 // Starts  webserver and registers URI handlers.
 void start_webserver(){
