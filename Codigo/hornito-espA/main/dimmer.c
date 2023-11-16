@@ -5,11 +5,17 @@
 #define PIN_OUT GPIO_NUM_33                         // Defines the TRIAC driver output pin
 #define DIMMER_SEMAPHORE_TIMEOUT_MS 11              // Defines the timeout for the dimmer semaphore in milliseconds
 #define PULSE_DELAY_US 10                           // Defines the pulse width of the output signal in microseconds
+
+#define DIMMER_MONITORING_TASK 0                    // Enables the dimmer task stack size monitoring
+#define MONITORING_DELAY_MS 2000                    // Defines the delay between monitoring in milliseconds
 //
 
 // Handles
 SemaphoreHandle_t xDimmerSemaphore_handle = NULL;   // Defines the dimmer semaphore handle
 TaskHandle_t xTaskDimmer_handle = NULL;             // Defines the dimmer task handle
+#if DIMMER_MONITORING_TASK
+TaskHandle_t xTaskDimmerMonitoring_handle = NULL;   // Defines the dimmer monitoring task handle
+#endif
 //
 
 // Global variables
@@ -20,6 +26,9 @@ bool dimmer_enabled = true;                         // Flag to indicate if the d
 
 // Function prototypes
 static void vTaskDimmer();
+#if DIMMER_MONITORING_TASK
+static void vTaskDimmerMonitoring();
+#endif
 void setup_dimmer_isr();
 void create_dimmer_task();
 void delete_dimmer_task();
@@ -59,11 +68,23 @@ void create_dimmer_task(){
                             tskIDLE_PRIORITY + 6,
                             &xTaskDimmer_handle,
                             1);
+    #if DIMMER_MONITORING_TASK
+    xTaskCreatePinnedToCore(vTaskDimmerMonitoring,
+                            "Dimmer Monitoring Task",
+                            configMINIMAL_STACK_SIZE * 5,
+                            NULL,
+                            tskIDLE_PRIORITY + 1,
+                            &xTaskDimmerMonitoring_handle,
+                            1);
+    #endif
 }
 
 // Deletes the dimmer task
 void delete_dimmer_task(){
     vTaskDelete(xTaskDimmer_handle);
+    #if DIMMER_MONITORING_TASK
+    vTaskDelete(xTaskDimmerMonitoring_handle);
+    #endif
 }
 
 // Sets the dimmer delay in microseconds
@@ -103,3 +124,13 @@ static void vTaskDimmer(){
         }
     }
 }
+
+#if DIMMER_MONITORING_TASK
+// Dimmer monitoring task. It monitors the dimmer task stack size and prints it to the output.
+static void vTaskDimmerMonitoring(){
+    while(true){
+        ESP_LOGW(TAG_DIMMER, "Dimmer task stack size: %d", uxTaskGetStackHighWaterMark(xTaskDimmer_handle));
+        vTaskDelay(pdMS_TO_TICKS(MONITORING_DELAY_MS));
+    }
+}
+#endif
