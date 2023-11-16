@@ -10,10 +10,10 @@
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 
-extern SemaphoreHandle_t xSemaphorePeltier;
-extern QueueHandle_t xQueuePeltier;
+extern SemaphoreHandle_t xSemaphorePeltier; // Semaphore to indicate that temperature value must be sent
+extern QueueHandle_t xQueuePeltier;         // Queue to send the temperature value
 
-void create_peltier_tasks();
-void delete_peltier_tasks();
+void create_peltier_tasks();                // Create peltier FreeRTOS tasks
+void delete_peltier_tasks();                // Delete peltier FreeRTOS tasks
 
 #endif
