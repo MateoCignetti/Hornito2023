@@ -9,7 +9,7 @@
 #define ADC_UNIT ADC_UNIT_1         //ADC unit used 
 #define ADC_CHANNEL ADC_CHANNEL_6   //ADC channel used
 
-#define SENSING_TIME_MS 10000       // Temperature sensing time
+#define SENSING_TIME_MS 5000       // Temperature sensing time
 
 #define PELTIER_MONITORING_TASK 0   // Enables the peltier task stack size monitoring
 #define TASK_MONITOR_DELAY_MS 2000  // Time interval for the monitoring task
@@ -130,7 +130,7 @@ static void vTaskReadTemperature(){
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while (true){
         if(xSemaphoreTake(xTemperatureMutex, portMAX_DELAY)){
-            temperature_c = get_ntc_temperature_c(get_adc_voltage_mv(ADC_UNIT, ADC_CHANNEL));
+            temperature_c = get_ntc_temperature_c(get_adc_voltage_mv_multisampling(ADC_UNIT, ADC_CHANNEL));
             xSemaphoreGive(xTemperatureMutex);
         }
         ESP_LOGI(TAG_PELTIER, "NTC Peltier: %.2f °C ", temperature_c);

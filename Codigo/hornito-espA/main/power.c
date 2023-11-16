@@ -36,6 +36,7 @@ static esp_timer_handle_t sampling_timer_handle = NULL;             // Handle fo
 SemaphoreHandle_t xSemaphorePower;                                  // Semaphore to indicate that the power value should be read
 QueueHandle_t xQueuePower;                                          // Queue to send the power value
 static TaskHandle_t xTaskPower_handle = NULL;                       // Handle for the power task
+static SemaphoreHandle_t xSemaphoreSamples = NULL;
 #if POWER_MONITORING_TASK
 static TaskHandle_t xTaskPowerMonitoring_handle = NULL;             // Handle for the power monitoring task
 #endif
@@ -75,6 +76,7 @@ void create_sampling_timer() {
 // the last to be below a certain value), it stops the timer.
 void sampling_timer_callback(){
     //taskENTER_CRITICAL();
+    //vTaskSuspendAll();
     samples[current_samples] = get_adc_voltage_mv(ADC_UNIT, ADC_CHANNEL);
     //taskEXIT_CRITICAL();
 
@@ -88,8 +90,9 @@ void sampling_timer_callback(){
 
     if(current_samples == SAMPLES_AMMOUNT){;
         if(samples[current_samples-1] < LAST_SAMPLE_THRESHOLD){
-            ESP_LOGI(TAG_POWER, "Samples taken");
             samples_taken = true;
+            xSemaphoreGive(xSemaphoreSamples);
+            //xTaskResumeAll();
             esp_timer_stop(sampling_timer_handle);
         } else{
             current_samples = 0;
@@ -173,6 +176,7 @@ static void vTaskPower(){
 
     ESP_LOGI(TAG_POWER, "Sampling period in microseconds: %d", SAMPLING_PERIOD_US);
     ESP_LOGI(TAG_POWER, "Ammount of samples per period: %d", SAMPLES_AMMOUNT);
+    xSemaphoreSamples = xSemaphoreCreateBinary();
 
     while(true){
         if(xSemaphoreTake(xSemaphorePower, portMAX_DELAY)){
@@ -180,19 +184,19 @@ static void vTaskPower(){
 
             ESP_LOGI(TAG_POWER, "Taking samples\n");
             create_sampling_timer();
-            while(!samples_taken){
-                vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(SAMPLE_READING_DELAY_MS));
-            }
-            scale_samples();
-            xSemaphoreGive(xSemaphoreControlSystemToPower);
-            if(xQueueReceive(xQueueControlSystemToPower, &delay_steps, portMAX_DELAY) != pdPASS){
-                ESP_LOGE(TAG_POWER, "Error receiving delay steps from control system\n");
-            } else{
-                float power = (pow(getVrms(delay_steps),2) ) / INTERIOR_RESISTOR_O;
-                if(xQueueSend(xQueuePower, &power, pdMS_TO_TICKS(RECEIVE_STEPS_TIMEOUT_MS)) != pdPASS){
-                    ESP_LOGE(TAG_POWER, "Error sending power value to queue\n");
+            if(xSemaphoreTake(xSemaphoreSamples, portMAX_DELAY)){
+                ESP_LOGI(TAG_POWER, "Samples taken");
+                scale_samples();
+                xSemaphoreGive(xSemaphoreControlSystemToPower);
+                if(xQueueReceive(xQueueControlSystemToPower, &delay_steps, portMAX_DELAY) != pdPASS){
+                    ESP_LOGE(TAG_POWER, "Error receiving delay steps from control system\n");
                 } else{
-                    ESP_LOGI(TAG_POWER, "Sent %.2f W value to power queue", power);
+                    float power = (pow(getVrms(delay_steps),2) ) / INTERIOR_RESISTOR_O;
+                    if(xQueueSend(xQueuePower, &power, pdMS_TO_TICKS(RECEIVE_STEPS_TIMEOUT_MS)) != pdPASS){
+                        ESP_LOGE(TAG_POWER, "Error sending power value to queue\n");
+                    } else{
+                        ESP_LOGI(TAG_POWER, "Sent %.2f W value to power queue", power);
+                    }
                 }
             }
         }

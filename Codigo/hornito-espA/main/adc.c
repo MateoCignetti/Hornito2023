@@ -3,8 +3,8 @@
 // Defines
 #define ADC1_DESIRED_BITWIDTH ADC_BITWIDTH_12   // Defines the desired bitwidth for ADC1
 #define ADC2_DESIRED_BITWIDTH ADC_BITWIDTH_12   // Defines the desired bitwidth for ADC2
-#define MULTISAMPLE_SIZE 10                     // Defines the number of ADC readings to be taken in the multisampling function
-#define MULTISAMPLE_DELAY_MS 1                  // Defines the delay between each ADC reading in the multisampling function
+#define MULTISAMPLE_SIZE 5                     // Defines the number of ADC readings to be taken in the multisampling function
+#define MULTISAMPLE_DELAY_MS 10                  // Defines the delay between each ADC reading in the multisampling function
 
 #define ADC_DEBUGGING_TASK 0                    // Defines and creates a task that reads all configured channels every 5 seconds.
                                                 // Note: This task is only used for debugging and should not be used in production

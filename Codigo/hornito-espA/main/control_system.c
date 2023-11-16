@@ -59,7 +59,7 @@ void create_control_system_tasks(){
                             NULL,
                             tskIDLE_PRIORITY + 2,
                             &xTaskControlSystemGetTemperature_handle,
-                            1);
+                            0);
 
     xTaskCreatePinnedToCore(vTaskControlSystemSendTemperature,
                             "Control System Send Temperature Task",
@@ -123,7 +123,7 @@ static void vTaskControlSystemGetTemperature(){
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while (true) {
         if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
-            temperature = get_ntc_temperature_c(get_adc_voltage_mv(ADC_UNIT, NTC1_CHANNEL));
+            temperature = get_ntc_temperature_c(get_adc_voltage_mv_multisampling(ADC_UNIT, NTC1_CHANNEL));
             xSemaphoreGive(mutexControlSystem);
         }
         ESP_LOGI(TAG_CONTROL, "NTC1: %.2f °C", temperature);
