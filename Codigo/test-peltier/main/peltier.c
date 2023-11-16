@@ -9,36 +9,47 @@
 #define ADC_UNIT ADC_UNIT_1         //ADC unit used 
 #define ADC_CHANNEL ADC_CHANNEL_6   //ADC channel used
 
-#define TASK_MONITOR_DELAY_MS 2000  // Time interval for the monitoring task
 #define SENSING_TIME_MS 10000       // Temperature sensing time
+
+#define PELTIER_MONITORING_TASK 0   // Enables the peltier task stack size monitoring
+#define TASK_MONITOR_DELAY_MS 2000  // Time interval for the monitoring task
 //
 
 // Function prototypes
-
 static void vTaskDecision();
 static void vTaskReadTemperature();
 static void vTaskSendData();
-void vTaskMonitor();
+#if PELTIER_MONITORING_TASK
+static void vTaskPeltierMonitor();
+#endif 
 void create_peltier_tasks();
 void delete_peltier_tasks();
 void create_peltier_semaphores_queues();
 //
 
 // Global variables
-
 float temperature_c = 0.0;                                  // Global variable for temperature
 const static char* TAG_PELTIER = "Peltier";                 // Tag for log messages
 static SemaphoreHandle_t xTemperatureMutex = NULL;          // Mutex to protect access to the variable temperature_c
 static TaskHandle_t xTaskReadTemperature_handle = NULL;     // Handle from the read temperature task 
 static TaskHandle_t xTaskSendData_handle = NULL;            // Handle from the send data task
 static TaskHandle_t xTaskDecision_handle = NULL;            // Handle from the desicion task
-static TaskHandle_t xTaskMonitor_handle = NULL;             // Handle from the monitor task
+
 QueueHandle_t xQueuePeltier = NULL;                         //Queue to send the temperature value
 SemaphoreHandle_t xSemaphorePeltier = NULL;                 //Semaphore to indicate that temperature value must be sent
+#if PELTIER_MONITORING_TASK
+TaskHandle_t xTaskPeltierMonitor_handle = NULL;             // Handle from the monitor task
+#endif
 //
 
 // Function to create tasks
 void create_peltier_tasks(){
+
+    // Create a mutex to protect the variable temperature_c
+    if(xTemperatureMutex == NULL){
+        xTemperatureMutex = xSemaphoreCreateMutex();
+    }
+    
     xTaskCreatePinnedToCore(vTaskDecision,
                             "Decision Task", 
                             configMINIMAL_STACK_SIZE * 5,
@@ -61,18 +72,15 @@ void create_peltier_tasks(){
                             tskIDLE_PRIORITY + 1,
                             &xTaskSendData_handle,
                             0);
-    xTaskCreatePinnedToCore(vTaskMonitor,
+    #if PELTIER_MONITORING_TASK
+    xTaskCreatePinnedToCore(vTaskPeltierMonitor,
                             "Monitor Task", 
                             configMINIMAL_STACK_SIZE * 5,
                             NULL,
                             tskIDLE_PRIORITY + 1,
-                            &xTaskMonitor_handle,
+                            &xTaskPeltierMonitor_handle,
                             0);
-
-    // Create a mutex to protect the variable temperature_c
-    if(xTemperatureMutex == NULL){
-        xTemperatureMutex = xSemaphoreCreateMutex();
-    }
+    #endif
 }
 
 // Function to delete tasks
@@ -80,7 +88,9 @@ void delete_peltier_tasks(){
     vTaskDelete(xTaskDecision_handle);
     vTaskDelete(xTaskReadTemperature_handle);
     vTaskDelete(xTaskSendData_handle);
-    vTaskDelete(xTaskMonitor_handle);
+    #if PELTIER_MONITORING_TASK
+    vTaskDelete(xTaskPeltierMonitor_handle);
+    #endif
 }
 //
 
@@ -172,7 +182,8 @@ static void vTaskDecision() {
 //
 
 // Task to monitor stack usage
-void vTaskMonitor(){
+#if PELTIER_MONITORING_TASK
+void vTaskPeltierMonitor(){
     while(true){
         
         ESP_LOGW(TAG_PELTIER, "Task enviar temp: %u bytes", uxTaskGetStackHighWaterMark(xTaskSendData_handle));
@@ -182,4 +193,5 @@ void vTaskMonitor(){
         vTaskDelay(pdMS_TO_TICKS(TASK_MONITOR_DELAY_MS));
     }
 }
+#endif
 //
