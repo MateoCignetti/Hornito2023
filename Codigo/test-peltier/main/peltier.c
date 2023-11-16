@@ -1,17 +1,19 @@
 #include "peltier.h"
 
-//-------------------- Definiciones -------------
+// Define
 
-#define PIN_PELTIER_1 GPIO_NUM_14
-#define PIN_PELTIER_2 GPIO_NUM_12
-#define PIN_PUMP GPIO_NUM_13
+#define PIN_PELTIER_1 GPIO_NUM_14   //Pin where peltier 1 is connected
+#define PIN_PELTIER_2 GPIO_NUM_12   //Pin where peltier 2 is connected
+#define PIN_PUMP GPIO_NUM_13        //Pin where pump is connected
 
-#define ADC_UNIT ADC_UNIT_1
-#define ADC_CHANNEL ADC_CHANNEL_6
-#define TASK_MONITOR_DELAY_MS 2000
-#define SENSING_TIME_MS 10000
+#define ADC_UNIT ADC_UNIT_1         //ADC unit used 
+#define ADC_CHANNEL ADC_CHANNEL_6   //ADC channel used
 
-//-------------------- Prototipos -------------
+#define TASK_MONITOR_DELAY_MS 2000  // Time interval for the monitoring task
+#define SENSING_TIME_MS 10000       // Temperature sensing time
+//
+
+// Function prototypes
 
 static void vTaskDecision();
 static void vTaskReadTemperature();
@@ -19,19 +21,22 @@ static void vTaskSendData();
 void vTaskMonitor();
 void create_peltier_tasks();
 void delete_peltier_tasks();
+//
 
-//-------------------- Variables, constantes y punteros globales -------------
+// Global variables
 
-float temperature_c = 0.0;
-const static char* TAG_PELTIER = "Peltier";
-static SemaphoreHandle_t xTemperatureMutex = NULL;
-static TaskHandle_t xTaskDecision_handle = NULL;
-static TaskHandle_t xTaskReadTemperature_handle = NULL;
-static TaskHandle_t xTaskSendData_handle = NULL;
-static TaskHandle_t xTaskMonitor_handle = NULL;
-QueueHandle_t xQueuePeltier = NULL; 
-SemaphoreHandle_t xSemaphorePeltier = NULL;
+float temperature_c = 0.0;                                  // Global variable for temperature
+const static char* TAG_PELTIER = "Peltier";                 // Tag for log messages
+static SemaphoreHandle_t xTemperatureMutex = NULL;          // Mutex to protect access to the variable temperature_c
+static TaskHandle_t xTaskReadTemperature_handle = NULL;     // Handle from the read temperature task 
+static TaskHandle_t xTaskSendData_handle = NULL;            // Handle from the send data task
+static TaskHandle_t xTaskDecision_handle = NULL;            // Handle from the desicion task
+static TaskHandle_t xTaskMonitor_handle = NULL;             // Handle from the monitor task
+QueueHandle_t xQueuePeltier = NULL;                         //Queue to send the temperature value
+SemaphoreHandle_t xSemaphorePeltier = NULL;                 //Semaphore to indicate that temperature value must be sent
+//
 
+// Function to create tasks
 void create_peltier_tasks(){
     xTaskCreatePinnedToCore(vTaskDecision,
                             "Decision Task", 
@@ -63,18 +68,28 @@ void create_peltier_tasks(){
                             &xTaskMonitor_handle,
                             0);
 
+    // Create a mutex to protect the variable temperature_c
     if(xTemperatureMutex == NULL){
         xTemperatureMutex = xSemaphoreCreateMutex();
     }
 }
 
+// Function to delete tasks
 void delete_peltier_tasks(){
     vTaskDelete(xTaskDecision_handle);
     vTaskDelete(xTaskReadTemperature_handle);
     vTaskDelete(xTaskSendData_handle);
     vTaskDelete(xTaskMonitor_handle);
 }
+//
 
+// This task is responsible for sending temperature data to a queue. The function 
+// performs various operations, including creating a binary semaphore if it hasn't
+// been created yet, and establishing a queue for temperature values. Periodically,
+// it waits for the semaphore signal, and upon acquiring it, obtains the mutex to
+// access the temperature variable. Subsequently, it sends the temperature value to
+// the queue and logs messages to indicate the success or failure of the transmission.
+// Finally, the mutex is released, and this task operates continuously in an infinite loop.
 static void vTaskSendData(){
 
     if(xSemaphorePeltier == NULL){
@@ -98,7 +113,13 @@ static void vTaskSendData(){
         }
     }
 }
+//
 
+// This task is responsible for reading the temperature from an NTC sensor. It periodically
+// reads the temperature using the NTC sensor and the analog-to-digital converter (ADC). It
+// acquires a mutex before accessing the global temperature variable. The temperature value
+// is updated based on the NTC sensor reading, and the mutex is released after the update.
+// It waits for a specified time before reading the temperature again.
 static void vTaskReadTemperature(){
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while (true){
@@ -110,7 +131,15 @@ static void vTaskReadTemperature(){
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(SENSING_TIME_MS));
     }
 }
+//
 
+// Task assigned to make control decisions based on temperature. Configures the 
+// pins as outputs for the Peltier plates and the pump. Calculates the difference 
+// between the current temperature and the desired temperature. Based on the 
+// temperature difference, it controls the turning on and off of the plates and 
+// the pump. If the difference is greater than two, it turns on all the plates and 
+// the pump. If it is less than minus two, it turns everything off. In an 
+// intermediate case, it keeps one plate and the pump on.
 static void vTaskDecision() {
 
     gpio_set_direction(PIN_PELTIER_1, GPIO_MODE_OUTPUT);
@@ -128,27 +157,25 @@ static void vTaskDecision() {
         }    
 
         if (temperatureDifference >= 2) {
-            // Enciende las tres placas Peltier y la bomba
             gpio_set_level(PIN_PELTIER_1, 1);
             gpio_set_level(PIN_PELTIER_2, 1);
             gpio_set_level(PIN_PUMP, 1);
         } else if (temperatureDifference <= -2 ) {
-            // Apaga las tres placas Peltier y la bomba
             gpio_set_level(PIN_PELTIER_1, 0);
             gpio_set_level(PIN_PELTIER_2, 0);
             gpio_set_level(PIN_PUMP, 0);
         } else {
-            // Enciende una placa Peltier y la bomba
             gpio_set_level(PIN_PELTIER_1, 1);
             gpio_set_level(PIN_PELTIER_2, 0);
             gpio_set_level(PIN_PUMP, 1);
         }
 
-        // Espera un tiempo antes de volver a leer la temperatura
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(SENSING_TIME_MS));
     }
 }
+//
 
+// Task to monitor stack usage
 void vTaskMonitor(){
     while(true){
         
@@ -159,3 +186,4 @@ void vTaskMonitor(){
         vTaskDelay(pdMS_TO_TICKS(TASK_MONITOR_DELAY_MS));
     }
 }
+//
