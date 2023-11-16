@@ -15,5 +15,5 @@ extern QueueHandle_t xQueuePeltier;         // Queue to send the temperature val
 
 void create_peltier_tasks();                // Create peltier FreeRTOS tasks
 void delete_peltier_tasks();                // Delete peltier FreeRTOS tasks
-
+void create_peltier_semaphores_queues();    // Create peltier semaphores and queues  
 #endif

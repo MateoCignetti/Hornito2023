@@ -21,6 +21,7 @@ static void vTaskSendData();
 void vTaskMonitor();
 void create_peltier_tasks();
 void delete_peltier_tasks();
+void create_peltier_semaphores_queues();
 //
 
 // Global variables
@@ -83,23 +84,18 @@ void delete_peltier_tasks(){
 }
 //
 
-// This task is responsible for sending temperature data to a queue. The function 
-// performs various operations, including creating a binary semaphore if it hasn't
-// been created yet, and establishing a queue for temperature values. Periodically,
+// Function to create semaphore and queue
+void create_peltier_semaphores_queues(){
+    xSemaphorePeltier = xSemaphoreCreateBinary();
+    xQueuePeltier = xQueueCreate(1, sizeof(float));
+}
+// 
+
+// This task is responsible for sending temperature data to a queue. Periodically,
 // it waits for the semaphore signal, and upon acquiring it, obtains the mutex to
 // access the temperature variable. Subsequently, it sends the temperature value to
 // the queue and logs messages to indicate the success or failure of the transmission.
-// Finally, the mutex is released, and this task operates continuously in an infinite loop.
 static void vTaskSendData(){
-
-    if(xSemaphorePeltier == NULL){
-        xSemaphorePeltier = xSemaphoreCreateBinary();
-    }
-
-    if(xQueuePeltier == NULL){
-        xQueuePeltier = xQueueCreate(1, sizeof(float));
-    }
-
     while (true){
         if (xSemaphoreTake(xSemaphorePeltier, portMAX_DELAY)){
             if (xSemaphoreTake(xTemperatureMutex, portMAX_DELAY)){
