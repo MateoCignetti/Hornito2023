@@ -58,7 +58,7 @@ void create_dimmer_task(){
                             NULL,
                             tskIDLE_PRIORITY + 6,
                             &xTaskDimmer_handle,
-                            0);
+                            1);
 }
 
 // Deletes the dimmer task

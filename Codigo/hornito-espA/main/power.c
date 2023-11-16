@@ -124,7 +124,7 @@ void create_power_tasks(){
                             &xTaskPower_handle,
                             tskIDLE_PRIORITY + 1,
                             NULL,
-                            1);
+                            0);
 }
 
 // Function that deletes the power-related tasks
