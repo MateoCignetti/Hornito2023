@@ -20,9 +20,9 @@ static SemaphoreHandle_t mutexControlSystem = NULL;                     // Mutex
 //
 
 // Global variables
-static float setPointTemperature = 60.0;                                // Value of set point temperature
+static float setPointTemperature = 37.0;                                // Value of set point temperature
 static float temperature = 25.0;                                        // Initial value of temperature
-int dimmer_delay_us = 9600;                                             // Initial value of dimmer delay in microseconds
+int dimmer_delay_us = 9200;                                             // Initial value of dimmer delay in microseconds
 QueueHandle_t xQueueControlSystem;                                      // Queue to send temperature to web
 SemaphoreHandle_t xSemaphoreControlSystem;                              // Semaphore to indicate that temperature is ready to send
 QueueHandle_t xQueueControlSystemToPower;                               // Queue to send steps to power
@@ -152,14 +152,16 @@ static void vTaskControlSystemSendTemperature(){
 // set point temperature and temperature. Finally, the dimmer delay is set according to the temperature difference and it sends
 // its value to the dimmer task.
 static void vTaskControlSystemDecision(){
-    int temperatureDifference = 0.0;
+    //int temperatureDifference = 0.0;
+    int currentTemperatureDifference = 0;
+    int previousTemperatureDifference = 0;
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while (true) {
-        if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
+        /*if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
             temperatureDifference = setPointTemperature - temperature;
             xSemaphoreGive(mutexControlSystem);
         }
-
+        
         if (temperatureDifference <= 60 && temperatureDifference > 50) {
             dimmer_delay_us = 7200;  
         } else if (temperatureDifference <= 50 && temperatureDifference > 40) {
@@ -173,6 +175,25 @@ static void vTaskControlSystemDecision(){
         } else if (temperatureDifference <= 10 && temperatureDifference > 0) {
              dimmer_delay_us = 9200;
         } else {
+            disable_dimmer();
+            continue;
+        }
+        */
+        if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
+            currentTemperatureDifference = setPointTemperature - temperature;
+            xSemaphoreGive(mutexControlSystem);
+        }
+        if (currentTemperatureDifference > 0) {
+            if (currentTemperatureDifference == previousTemperatureDifference) {
+                dimmer_delay_us -= 400;
+            } else if (currentTemperatureDifference < previousTemperatureDifference) {
+                continue;
+            } else {
+                dimmer_delay_us -= 400;
+            }
+            previousTemperatureDifference = currentTemperatureDifference;                   
+        } else {
+            //dimmer_delay_us = 9200;
             disable_dimmer();
             continue;
         }
