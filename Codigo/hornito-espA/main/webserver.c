@@ -9,7 +9,7 @@
 #define UPDATE_DATA_DELAY_MS  7000                      // Period of updating data task.
 #define POWER_QUEUE_DELAY_MS  6000                      // Delay for Queue.
 
-#define DATA_TASK_MONITORING 0
+#define DATA_TASK_MONITORING  0
 #define TASK_MONITOR_DELAY_MS 2000                      // Delay for Monitor Task.
 //
 
@@ -47,6 +47,9 @@ static esp_err_t time_post_handler(httpd_req_t *req);
 static esp_err_t get_data_handler(httpd_req_t *req);
 static esp_err_t save_shutodwn_handler(httpd_req_t *req);
 static void vTaskUpdateData();
+static void create_data_tasks();
+static void delete_data_tasks();
+static void resetMeasurements();
 #if DATA_TASK_MONITORING
 static void vTaskUpdateData_Monitoring();
 #endif
@@ -105,10 +108,24 @@ static void create_data_tasks(){
 
 }
 
+static void delete_data_tasks(){
+    if(xTaskUpdateData_handle != NULL){
+        vTaskDelete(xTaskUpdateData_handle);
+        xTaskUpdateData_handle = NULL;
+    }
+
+    #if DATA_TASK_MONITORING
+    if(xTaskUpdateData_Monitoring_handle != NULL){
+        vTaskDelete(xTaskUpdateData_Monitoring_handle);
+        xTaskUpdateData_Monitoring_handle = NULL;
+    }
+    #endif
+}
+
 // Task function for updating data struct periodically.
 static void vTaskUpdateData(){
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    while(update_while == 1){
+    while(true){ //update_while == 1
         xSemaphoreGive(xSemaphorePower);                                                                    
         xSemaphoreGive(xSemaphoreControlSystem);
         xSemaphoreGive(xSemaphorePeltier);
@@ -155,8 +172,9 @@ static void vTaskUpdateData(){
         data_n++;                                                                                           //Increment data entries counter.
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(UPDATE_DATA_DELAY_MS));
     }
-    vTaskDelete(NULL);                                                                                      // Self-delete the task when the loop exits.
+    //vTaskDelete(NULL);                                                                                      // Self-delete the task when the loop exits.
 }
+
 
 #if DATA_TASK_MONITORING
 // Task function for monitoring the stack usage of the 'xTaskUpdateData' task.
@@ -262,8 +280,8 @@ esp_err_t get_data_handler(httpd_req_t *req)
 // Handles GET requests to "/saveShutdown" URI.
 static esp_err_t save_shutodwn_handler(httpd_req_t *req){
 
-    update_while = 0;                                                                      // To stop Update Data Task while loop.
-
+    //update_while = 0;                                                                      // To stop Update Data Task while loop.
+    delete_data_tasks();
     static char buffer[3072];                                                              // Create a buffer for file data.
     buffer[0] = '\0';                                                                      // Initialize the buffer as an empty string.
 
@@ -281,5 +299,13 @@ static esp_err_t save_shutodwn_handler(httpd_req_t *req){
 
     delete_tasks();
 
+    resetMeasurements();
+
     return ESP_OK;
+}
+
+static void resetMeasurements() {
+    static size_t size = sizeof(Measurement);
+    memset(measurements, 0, DATA_ARRAY_SIZE * size);
+    data_n = 0;
 }

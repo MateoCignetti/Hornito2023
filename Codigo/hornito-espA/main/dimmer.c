@@ -81,9 +81,16 @@ void create_dimmer_task(){
 
 // Deletes the dimmer task
 void delete_dimmer_task(){
-    vTaskDelete(xTaskDimmer_handle);
+    if(xTaskDimmer_handle != NULL){
+        vTaskDelete(xTaskDimmer_handle);
+        xTaskDimmer_handle = NULL;
+    }
+
     #if DIMMER_MONITORING_TASK
-    vTaskDelete(xTaskDimmerMonitoring_handle);
+    if(xTaskDimmerMonitoring_handle != NULL){
+        vTaskDelete(xTaskDimmerMonitoring_handle);
+        xTaskDimmerMonitoring_handle = NULL;
+    }
     #endif
 }
 

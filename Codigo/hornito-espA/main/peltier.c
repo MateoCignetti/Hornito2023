@@ -85,11 +85,26 @@ void create_peltier_tasks(){
 
 // Function to delete tasks
 void delete_peltier_tasks(){
-    vTaskDelete(xTaskDecision_handle);
-    vTaskDelete(xTaskReadTemperature_handle);
-    vTaskDelete(xTaskSendData_handle);
+    if(xTaskDecision_handle != NULL){
+        vTaskDelete(xTaskDecision_handle);
+        xTaskDecision_handle = NULL;
+    }
+
+    if(xTaskReadTemperature_handle != NULL){
+        vTaskDelete(xTaskReadTemperature_handle);
+        xTaskReadTemperature_handle = NULL;
+    }
+
+    if(xTaskSendData_handle != NULL){
+        vTaskDelete(xTaskSendData_handle);
+        xTaskSendData_handle = NULL;
+    }
+
     #if PELTIER_MONITORING_TASK
-    vTaskDelete(xTaskPeltierMonitor_handle);
+    if(xTaskPeltierMonitor_handle != NULL){
+        vTaskDelete(xTaskPeltierMonitor_handle);
+        xTaskPeltierMonitor_handle = NULL;
+    }
     #endif
 }
 //
