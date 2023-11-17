@@ -75,7 +75,7 @@ void create_control_system_tasks(){
                             NULL,
                             tskIDLE_PRIORITY + 1,
                             &xTaskControlSystemDecision_handle,
-                            0);
+                            1);
 
     xTaskCreatePinnedToCore(vTaskControlSystemSendSteps,
                             "Control System Send Steps Task",
@@ -106,12 +106,31 @@ void create_control_system_semaphores_queues(){
 
 // Delete tasks for control system
 void delete_control_system_tasks(){
-    vTaskDelete(xTaskControlSystemGetTemperature_handle);
-    vTaskDelete(xTaskControlSystemSendTemperature_handle);
-    vTaskDelete(xTaskControlSystemDecision_handle);
-    vTaskDelete(xTaskControlSystemSendSteps_handle);
+    if(xTaskControlSystemGetTemperature_handle != NULL){
+        vTaskDelete(xTaskControlSystemGetTemperature_handle);
+        xTaskControlSystemGetTemperature_handle = NULL;
+    }
+
+    if(xTaskControlSystemSendTemperature_handle != NULL){
+        vTaskDelete(xTaskControlSystemSendTemperature_handle);
+        xTaskControlSystemSendTemperature_handle = NULL;
+    }
+
+    if(xTaskControlSystemDecision_handle != NULL){
+        vTaskDelete(xTaskControlSystemDecision_handle);
+        xTaskControlSystemDecision_handle = NULL;
+    }
+
+    if(xTaskControlSystemSendSteps_handle != NULL){
+        vTaskDelete(xTaskControlSystemSendSteps_handle);
+        xTaskControlSystemSendSteps_handle = NULL;
+    }
     #if CONTROL_MONITORING_TASK
-    vTaskDelete(xTaskControlSystemMonitor_handle);
+    
+    if(xTaskControlSystemMonitor_handle != NULL){
+        vTaskDelete(xTaskControlSystemMonitor_handle);
+        xTaskControlSystemMonitor_handle = NULL;
+    }
     #endif
 }
 //
@@ -183,23 +202,26 @@ static void vTaskControlSystemDecision(){
             currentTemperatureDifference = setPointTemperature - temperature;
             xSemaphoreGive(mutexControlSystem);
         }
+
         if (currentTemperatureDifference > 0) {
-            if (currentTemperatureDifference == previousTemperatureDifference) {
+            if (currentTemperatureDifference == previousTemperatureDifference && dimmer_delay_us > 400) {
                 dimmer_delay_us -= 400;
-            } else if (currentTemperatureDifference < previousTemperatureDifference) {
-                continue;
-            } else {
+            } else if (currentTemperatureDifference > previousTemperatureDifference && dimmer_delay_us > 400) {
                 dimmer_delay_us -= 400;
+            } else if (currentTemperatureDifference < previousTemperatureDifference && dimmer_delay_us < 9200){
+                dimmer_delay_us += 400;
             }
-            previousTemperatureDifference = currentTemperatureDifference;                   
+            previousTemperatureDifference = currentTemperatureDifference;                  
         } else {
             //dimmer_delay_us = 9200;
             disable_dimmer();
+            ESP_LOGI(TAG_CONTROL, "Turn off dimmer");
+            vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));
             continue;
         }
         enable_dimmer();
         set_dimmer_delay(dimmer_delay_us);
-        ESP_LOGI(TAG_CONTROL, "Delay microseconds: %d", dimmer_delay_us);
+        ESP_LOGI(TAG_CONTROL, "Delay microseconds: %d", dimmer_delay_us); 
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));
     }
 }

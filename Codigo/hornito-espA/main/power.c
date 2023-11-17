@@ -161,7 +161,7 @@ void create_power_semaphores_queues(){
 void delete_power_tasks(){
     if(xTaskPower_handle != NULL){
         vTaskDelete(xTaskPower_handle);
-        xTaskReadTemperature_handle = NULL;
+        xTaskPower_handle = NULL;
     }
 
     #if POWER_MONITORING_TASK
