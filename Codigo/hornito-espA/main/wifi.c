@@ -24,7 +24,7 @@ static void wifi_lwip_init(){
     esp_event_loop_create_default();        //Create a default event loop to handle network events
     esp_netif_create_default_wifi_ap();     //Create a Wi-Fi interface in access point (AP) mode
     wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT(); //Default Wi-Fi configuration
-    wifi_config.nvs_enable = 0;             //Disable NVS usage for Wi-Fi configuration
+    //wifi_config.nvs_enable = 0;             //Disable NVS usage for Wi-Fi configuration
     esp_wifi_init(&wifi_config);            //Initialize Wi-Fi driver with the provided configuration
 }
 //Configure Wi-Fi connection in AP mode with specified SSID and password

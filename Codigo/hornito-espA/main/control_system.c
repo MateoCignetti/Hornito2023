@@ -20,7 +20,8 @@ static SemaphoreHandle_t mutexControlSystem = NULL;                     // Mutex
 //
 
 // Global variables
-static float setPointTemperature = 37.0;                                // Value of set point temperature
+bool is_dimmer_disabled = false;
+static float setPointTemperature = 60.0;                                // Value of set point temperature
 static float temperature = 25.0;                                        // Initial value of temperature
 int dimmer_delay_us = 9200;                                             // Initial value of dimmer delay in microseconds
 QueueHandle_t xQueueControlSystem;                                      // Queue to send temperature to web
@@ -171,34 +172,40 @@ static void vTaskControlSystemSendTemperature(){
 // set point temperature and temperature. Finally, the dimmer delay is set according to the temperature difference and it sends
 // its value to the dimmer task.
 static void vTaskControlSystemDecision(){
-    //int temperatureDifference = 0.0;
-    int currentTemperatureDifference = 0;
-    int previousTemperatureDifference = 0;
-    int dimmer = 9200;
+    int temperatureDifference = 0.0;
+    //int currentTemperatureDifference = 0;
+    //int previousTemperatureDifference = 0;
+    //int dimmer = 9200;
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while (true) {
-        /*if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
+        if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
             temperatureDifference = setPointTemperature - temperature;
             xSemaphoreGive(mutexControlSystem);
         }
         
-        if (temperatureDifference <= 60 && temperatureDifference > 50) {
-            dimmer_delay_us = 7200;  
-        } else if (temperatureDifference <= 50 && temperatureDifference > 40) {
+        if (temperatureDifference > 50) {
+            dimmer_delay_us = 6800;  
+        } else if (temperatureDifference <= 50 && temperatureDifference > 45) {
+            dimmer_delay_us = 7200;
+        } else if (temperatureDifference <= 45 && temperatureDifference > 40) {
             dimmer_delay_us = 7600;
-        } else if (temperatureDifference <= 40 && temperatureDifference> 30) {
+        } else if (temperatureDifference <= 40 && temperatureDifference > 35) {
             dimmer_delay_us = 8000;
-        } else if (temperatureDifference <= 30 && temperatureDifference > 20) {
+        } else if (temperatureDifference <= 35 && temperatureDifference > 30) {
             dimmer_delay_us = 8400;
+        } else if (temperatureDifference <= 30 && temperatureDifference > 20) {
+            dimmer_delay_us = 8800;
         } else if (temperatureDifference <= 20 && temperatureDifference > 10) {
-             dimmer_delay_us = 8800;
-        } else if (temperatureDifference <= 10 && temperatureDifference > 0) {
-             dimmer_delay_us = 9200;
+            dimmer_delay_us = 9200;
         } else {
             disable_dimmer();
+            is_dimmer_disabled = true;
+            vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));
+            ESP_LOGI(TAG_CONTROL, "Dimmer off"); 
             continue;
         }
-        */
+        
+        /*
         if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
             currentTemperatureDifference = setPointTemperature - temperature;
             xSemaphoreGive(mutexControlSystem);
@@ -222,7 +229,9 @@ static void vTaskControlSystemDecision(){
             vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));
             continue;
         }
+        */
         enable_dimmer();
+        is_dimmer_disabled = false;
         set_dimmer_delay(dimmer_delay_us);
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));     
         ESP_LOGI(TAG_CONTROL, "Delay microseconds: %d", dimmer_delay_us); 
@@ -236,7 +245,11 @@ static void vTaskControlSystemSendSteps(){
 
     while (true) {
         if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
-            steps = dimmer_delay_us/US_TO_STEPS;
+            if(is_dimmer_disabled){
+                steps = 0;
+            } else{
+                steps = dimmer_delay_us/US_TO_STEPS;
+            }
             xSemaphoreGive(mutexControlSystem);
         }
         if (xSemaphoreTake(xSemaphoreControlSystemToPower, portMAX_DELAY)) {

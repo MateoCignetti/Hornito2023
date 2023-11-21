@@ -3,7 +3,7 @@
 // Defines
 #define PIN_IN GPIO_NUM_26                          // Defines the zero-crossing circuit input pi
 #define PIN_OUT GPIO_NUM_27                         // Defines the TRIAC driver output pin
-#define DIMMER_SEMAPHORE_TIMEOUT_MS 11              // Defines the timeout for the dimmer semaphore in milliseconds
+#define DIMMER_SEMAPHORE_TIMEOUT_MS 12              // Defines the timeout for the dimmer semaphore in milliseconds
 #define PULSE_DELAY_US 10                           // Defines the pulse width of the output signal in microseconds
 
 #define DIMMER_MONITORING_TASK 0                    // Enables the dimmer task stack size monitoring
@@ -128,6 +128,7 @@ static void vTaskDimmer(){
             //vTaskDelay(pdMS_TO_TICKS(DELAY_DIMMER_MS));
         } else{
             ESP_LOGE(TAG_DIMMER, "Dimmer timeout");     // Could be modified so that it doesn't flood the output. Maybe a counter?
+            //vTaskDelay(pdMS_TO_TICKS(1000));
         }
     }
 }

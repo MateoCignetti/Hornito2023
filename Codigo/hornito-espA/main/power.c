@@ -135,7 +135,7 @@ static float getVrms(int delay_steps){
 void create_power_tasks(){
     xTaskCreatePinnedToCore(&vTaskPower,
                             "Power read task",
-                            configMINIMAL_STACK_SIZE * 5,
+                            configMINIMAL_STACK_SIZE * 7,
                             &xTaskPower_handle,
                             tskIDLE_PRIORITY + 5,
                             NULL,
@@ -177,8 +177,9 @@ void delete_power_tasks(){
 // control system task to get a steps delay value. Once the vrms value is calculated, it sends
 // the power value to a queue for the webserver to read.
 static void vTaskPower(){
-    TickType_t xLastWakeTime = xTaskGetTickCount();
+    //TickType_t xLastWakeTime = xTaskGetTickCount();
     int delay_steps = 0;
+    float power = 0.0;
 
     ESP_LOGI(TAG_POWER, "Sampling period in microseconds: %d", SAMPLING_PERIOD_US);
     ESP_LOGI(TAG_POWER, "Ammount of samples per period: %d", SAMPLES_AMMOUNT);
@@ -197,7 +198,11 @@ static void vTaskPower(){
                 if(xQueueReceive(xQueueControlSystemToPower, &delay_steps, portMAX_DELAY) != pdPASS){
                     ESP_LOGE(TAG_POWER, "Error receiving delay steps from control system\n");
                 } else{
-                    float power = (pow(getVrms(delay_steps),2) ) / INTERIOR_RESISTOR_O;
+                    if(delay_steps == 0){
+                        power = 0.0;
+                    } else{
+                        power = (pow(getVrms(delay_steps),2) ) / INTERIOR_RESISTOR_O;
+                    }
                     if(xQueueSend(xQueuePower, &power, pdMS_TO_TICKS(RECEIVE_STEPS_TIMEOUT_MS)) != pdPASS){
                         ESP_LOGE(TAG_POWER, "Error sending power value to queue\n");
                     } else{
