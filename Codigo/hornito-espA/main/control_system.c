@@ -1,7 +1,7 @@
 #include "control_system.h"
 
 // Defines
-#define TASK_CONTROL_SYSTEM_DELAY_MS 2000                               // Milisenconds to wait in the control system tasks
+#define TASK_CONTROL_SYSTEM_DELAY_MS 5000                               // Milisenconds to wait in the control system tasks
 #define US_TO_STEPS 400                                                 // Conversion from microseconds to steps
 #define CONTROL_MONITORING_TASK 0                                       // Defines and creates a task that monitors the control system tasks
 #define CONTROL_MONITORING_TASK_DELAY_MS 2000                           // Defines the period of the control system monitoring task mentioned above
@@ -75,7 +75,7 @@ void create_control_system_tasks(){
                             NULL,
                             tskIDLE_PRIORITY + 1,
                             &xTaskControlSystemDecision_handle,
-                            1);
+                            0);
 
     xTaskCreatePinnedToCore(vTaskControlSystemSendSteps,
                             "Control System Send Steps Task",
@@ -125,8 +125,8 @@ void delete_control_system_tasks(){
         vTaskDelete(xTaskControlSystemSendSteps_handle);
         xTaskControlSystemSendSteps_handle = NULL;
     }
+
     #if CONTROL_MONITORING_TASK
-    
     if(xTaskControlSystemMonitor_handle != NULL){
         vTaskDelete(xTaskControlSystemMonitor_handle);
         xTaskControlSystemMonitor_handle = NULL;
@@ -174,6 +174,7 @@ static void vTaskControlSystemDecision(){
     //int temperatureDifference = 0.0;
     int currentTemperatureDifference = 0;
     int previousTemperatureDifference = 0;
+    int dimmer = 9200;
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while (true) {
         /*if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
@@ -204,14 +205,16 @@ static void vTaskControlSystemDecision(){
         }
 
         if (currentTemperatureDifference > 0) {
-            if (currentTemperatureDifference == previousTemperatureDifference && dimmer_delay_us > 400) {
-                dimmer_delay_us -= 400;
-            } else if (currentTemperatureDifference > previousTemperatureDifference && dimmer_delay_us > 400) {
-                dimmer_delay_us -= 400;
-            } else if (currentTemperatureDifference < previousTemperatureDifference && dimmer_delay_us < 9200){
-                dimmer_delay_us += 400;
+            if (currentTemperatureDifference == previousTemperatureDifference && dimmer_delay_us > 7200) {
+                    dimmer -= 400;
+            } else if (currentTemperatureDifference > previousTemperatureDifference && dimmer_delay_us > 7200) {
+                    dimmer -= 400;
+            } else if (currentTemperatureDifference < previousTemperatureDifference && dimmer_delay_us <= 8000){
+                    dimmer += 1200;
             }
-            previousTemperatureDifference = currentTemperatureDifference;                  
+            previousTemperatureDifference = currentTemperatureDifference; 
+            dimmer_delay_us = dimmer;       
+    
         } else {
             //dimmer_delay_us = 9200;
             disable_dimmer();
@@ -221,8 +224,8 @@ static void vTaskControlSystemDecision(){
         }
         enable_dimmer();
         set_dimmer_delay(dimmer_delay_us);
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));     
         ESP_LOGI(TAG_CONTROL, "Delay microseconds: %d", dimmer_delay_us); 
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));
     }
 }
 
