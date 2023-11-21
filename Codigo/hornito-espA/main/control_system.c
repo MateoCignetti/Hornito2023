@@ -209,8 +209,8 @@ static void vTaskControlSystemDecision(){
                     dimmer -= 400;
             } else if (currentTemperatureDifference > previousTemperatureDifference && dimmer_delay_us > 7200) {
                     dimmer -= 400;
-            } else if (currentTemperatureDifference < previousTemperatureDifference && dimmer_delay_us <= 8000){
-                    dimmer += 1200;
+            } else if (currentTemperatureDifference < previousTemperatureDifference && dimmer_delay_us <= 9200){
+                    dimmer += 400;
             }
             previousTemperatureDifference = currentTemperatureDifference; 
             dimmer_delay_us = dimmer;       
