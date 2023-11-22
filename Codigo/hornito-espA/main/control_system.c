@@ -244,13 +244,13 @@ static void vTaskControlSystemSendSteps(){
     int steps = 0;
 
     while (true) {
-        if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
-            if(is_dimmer_disabled){
-                steps = 0;
-            } else{
-                steps = dimmer_delay_us/US_TO_STEPS;
+        if (is_dimmer_disabled) {
+            steps = 0;
+        } else {
+            if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
+                steps = dimmer_delay_us / US_TO_STEPS;
+                xSemaphoreGive(mutexControlSystem);
             }
-            xSemaphoreGive(mutexControlSystem);
         }
         if (xSemaphoreTake(xSemaphoreControlSystemToPower, portMAX_DELAY)) {
                 if (xQueueSend(xQueueControlSystemToPower, &steps, portMAX_DELAY) != pdTRUE) {
