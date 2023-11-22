@@ -195,7 +195,7 @@ static void vTaskControlSystemDecision(){
             dimmer_delay_us = 8400;
         } else if (temperatureDifference <= 30 && temperatureDifference > 20) {
             dimmer_delay_us = 8800;
-        } else if (temperatureDifference <= 20 && temperatureDifference > 10) {
+        } else if (temperatureDifference <= 20 && temperatureDifference > 0) {
             dimmer_delay_us = 9200;
         } else {
             disable_dimmer();
