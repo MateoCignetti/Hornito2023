@@ -24,7 +24,6 @@ typedef struct{                                         //Struct to store data: 
 
 // Global variables
 static int data_n = 0;                                  // Number of data entries.
-static int update_while = 1;                            // Update data task condition.
 static Measurement measurements[DATA_ARRAY_SIZE];       // Array of measurements.
 //
 
@@ -125,15 +124,13 @@ static void delete_data_tasks(){
 // Task function for updating data struct periodically.
 static void vTaskUpdateData(){
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    while(true){ //update_while == 1
-        xSemaphoreGive(xSemaphorePower);                                                                    
-        xSemaphoreGive(xSemaphoreControlSystem);
-        xSemaphoreGive(xSemaphorePeltier);
-
+    while(true){                                                      
         float powerValue = 0.0;
         float hotTempValue = 0.0;
         float coldTempValue = 0.0;
         
+        xSemaphoreGive(xSemaphorePower);  
+
         if(xQueueReceive( xQueuePower , &powerValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){                // Check and process queue data.
             if (xSemaphoreTake(mutexData, portMAX_DELAY)) {
                 sprintf(measurements[data_n].potencia, "%.2f", powerValue);                                 // Convert value to a string and store it in data struct.
@@ -143,6 +140,8 @@ static void vTaskUpdateData(){
             ESP_LOGE(TAG_UPDATE, "Power Queue timeout");
         }
         
+        xSemaphoreGive(xSemaphoreControlSystem);
+
         if(xQueueReceive( xQueueControlSystem , &hotTempValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){
             if(xSemaphoreTake(mutexData, portMAX_DELAY)){
                 sprintf(measurements[data_n].temperaturaPC, "%.2f", hotTempValue);
@@ -151,15 +150,8 @@ static void vTaskUpdateData(){
         }else{
             ESP_LOGE(TAG_UPDATE, "Control System Queue timeout");
         }
-
-        /*DEBUG - BORRAR E IMPLEMENTAR QUEUE DE PELTIER
-
-        if (xSemaphoreTake(mutexData, portMAX_DELAY)) {
-            strncpy(measurements[data_n].temperaturaPF, "80.00", TEMP_ARRAY_SIZE);
-            xSemaphoreGive(mutexData);
-        }
-
-             */
+  
+        xSemaphoreGive(xSemaphorePeltier);
 
         if(xQueueReceive( xQueuePeltier , &coldTempValue,  pdMS_TO_TICKS(POWER_QUEUE_DELAY_MS))){
             sprintf(measurements[data_n].temperaturaPF, "%.2f", coldTempValue);
@@ -217,7 +209,6 @@ esp_err_t time_post_handler(httpd_req_t *req)
 {
     char buf[100];                                                    // Buffer to store POST data.
     int ret, remaining = req->content_len;                            // Remaining bytes to read.
-    update_while = 1;
     create_tasks();
 
     while (remaining > 0) {                                           // Read POST data sent from the form.
@@ -280,7 +271,6 @@ esp_err_t get_data_handler(httpd_req_t *req)
 // Handles GET requests to "/saveShutdown" URI.
 static esp_err_t save_shutodwn_handler(httpd_req_t *req){
 
-    //update_while = 0;                                                                      // To stop Update Data Task while loop.
     delete_data_tasks();
     static char buffer[3072];                                                              // Create a buffer for file data.
     buffer[0] = '\0';                                                                      // Initialize the buffer as an empty string.
