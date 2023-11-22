@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">                                      
+    <title>Tabla HTML Estilizada con Datos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        table {
+            width: 50%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background-color: #fff;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #333;
+            color: #fff;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .boton-inicio {
+            margin: 20px;
+            padding: 10px 20px;
+            background-color: #4caf50;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            position: fixed;
+            top: 10px;
+            left: 15px;
+        }
+
+        .boton-inicio:hover {
+            background-color: #45a049;
+        }
+
+        .boton-apagado {
+            margin: 20px;
+            padding: 10px 20px;
+            background-color: #af4c4c;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            position: fixed;
+            top: 10px;
+            right: 15px;
+        }
+
+        .boton-apagado:hover {
+            background-color: #a04545;
+        }
+        
+    </style>
+</head>
+<body>
+    <button class="boton-inicio" onclick="enviarSegundosDesdeEpoch()">Inicio</button>        <!-- Botón de inicio -->
+
+    <button class="boton-apagado" onclick="guardarApagar()">Guardar y Finalizar</button>     <!-- Botón de guardar y finalizar -->
+
+    <form id="formulario-segundos" action="/post_time" method="post">
+        <input type="hidden" name="segundos_desde_epoch" id="campo-segundos" value="">       <!-- Campo oculto para enviar segundos desde el EPOCH -->
+    </form>
+
+    <h2>Medición de Conductividad Térmica</h2>
+    
+    <!-- Crear la tabla -->
+    <table>
+        <thead>
+            <tr>
+                <th>Tiempo</th>
+                <th>Potencia entregada [W]</th>
+                <th>Temperatura Placa Fría [°C]</th>
+                <th>Temperatura Placa Caliente [°C]</th>
+            </tr>
+        </thead>
+        <tbody id="tabla-datos">
+            <!-- Aquí se agregarán las filas con datos dinámicamente [actualizarTabla()] -->
+        </tbody>
+    </table>
+
+    <script>
+        // Función para enviar los segundos desde el EPOCH al servidor
+        function enviarSegundosDesdeEpoch() {
+            // Obtener la cantidad de segundos desde el EPOCH
+            var segundosDesdeEpoch = Math.floor(Date.now() / 1000);
+
+            // Establecer los segundos desde el EPOCH como el valor del campo oculto
+            document.getElementById("campo-segundos").value = segundosDesdeEpoch;
+
+            // Envía el formulario oculto
+            document.getElementById("formulario-segundos").submit();
+        }
+        
+        // Función para guardar y apagar el sistema
+        function guardarApagar(){
+            // Crear una nueva solicitud XMLHttpRequest
+            var xhttp = new XMLHttpRequest();
+            // Configurar la función de devolución de llamada cuando el estado de la solicitud cambie
+            xhttp.onreadystatechange = function() {
+                if (this.readyState == 4 && this.status == 200) {
+                    // Crear un enlace temporal para descargar el archivo con la respuesta del servidor
+                    var blob = new Blob([this.responseText], { type: 'text/plain' });
+                    var url = window.URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'datos.txt';           // Nombre del archivo de descarga
+                    a.click();                          // Simular el clic en el enlace para iniciar la descarga
+                    window.URL.revokeObjectURL(url);    // Liberar el objeto de URL
+                }
+            };
+            // Configurar la solicitud GET al URI "/saveShutdown" del servidor
+            xhttp.open("GET", "/saveShutdown", true);
+            // Enviar la solicitud al servidor
+            xhttp.send();
+        }
+
+        // Función para realizar una solicitud al servidor y actualizar la tabla
+        function actualizarTabla() {
+            // Crear una nueva solicitud XMLHttpRequest
+            var xhttp = new XMLHttpRequest();
+            // Configurar la función de devolución de llamada cuando el estado de la solicitud cambie
+            xhttp.onreadystatechange = function() {
+                if (this.readyState == 4 && this.status == 200) {
+                    // Parsear los datos JSON recibidos del servidor
+                    var nuevosDatos = JSON.parse(this.responseText);
+
+                    // Limpiar la tabla
+                    var tabla = document.getElementById("tabla-datos");
+                    tabla.innerHTML = '';
+
+                    // Recorrer los nuevos datos y agregarlos a la tabla
+                    nuevosDatos.forEach(function(dato) {
+                        var fila = tabla.insertRow();
+                        var celdaTiempo = fila.insertCell(0);
+                        var celdaPotencia = fila.insertCell(1);
+                        var celdaTemperaturaPF = fila.insertCell(2);
+                        var celdaTemperaturaPC = fila.insertCell(3);
+                        // Establecer los valores de las celdas con los datos recibidos
+                        celdaTiempo.innerHTML = dato.tiempo;
+                        celdaPotencia.innerHTML = dato.potencia;
+                        celdaTemperaturaPF.innerHTML = dato.temperaturaPF;
+                        celdaTemperaturaPC.innerHTML = dato.temperaturaPC;
+                    });
+                }
+            };
+            // Configurar la solicitud GET al URI "/get_data" del servidor
+            xhttp.open("GET", "/get_data", true);
+            // Enviar la solicitud al servidor
+            xhttp.send();
+        }
+        // Actualizar la tabla cada 1 segundo (ajusta el intervalo según tus necesidades)
+        setInterval(actualizarTabla, 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+#include "ntc.h"
+
+// Defines
+#define NTC_READ_TASK_DELAY_MS 2000     // Defines the period of the NTC reading task
+
+// Constant values
+const int DIVIDER_RESISTOR_O = 100000;   // Resistance in Ohms of the resistor in series with the NTC
+const double SUPPLY_VOLTAGE_V = 3.300;   // Supply voltage in Volts
+const double NTC_A = 0.7270763029 * pow(10, -3);
+const double NTC_B = 2.131023789 * pow(10, -4);
+const double NTC_C = 1.137360980 * pow(10, -7);
+
+// Handles
+static TaskHandle_t xTaskAdcDebug_handle;
+
+// ESP-LOG Tags
+const static char* TAG_NTC = "NTC";
+
+// Private function prototypes
+static void vTaskReadNTCs();
+
+// Functions
+double get_ntc_temperature_c(int adc_reading_mv){
+    double adc_reading_v = adc_reading_mv / 1000.0;
+    printf("ADC reading: %.2f V\n", adc_reading_v); //Only used for debugging
+    double ntc_resistance_o =  ((SUPPLY_VOLTAGE_V * DIVIDER_RESISTOR_O)/adc_reading_v) - DIVIDER_RESISTOR_O; //Calculates the resistance of the NTC in Ohms using the voltage divider formul
+    printf("NTC resistance: %.2f Ohm\n", ntc_resistance_o);                                                                 //Only used for debugging
+    double ntc_temperature_c = (1/(NTC_A + NTC_B * log(ntc_resistance_o) + NTC_C * pow(log(ntc_resistance_o), 3))) - 273.15;       
+    return ntc_temperature_c;
+}
+
+void create_ntc_tasks(){
+    xTaskCreatePinnedToCore(vTaskReadNTCs,
+                            "vTaskReadAllChannels",
+                            configMINIMAL_STACK_SIZE * 5,
+                            NULL,
+                            tskIDLE_PRIORITY + 1,
+                            &xTaskAdcDebug_handle,
+                            0);
+}
+
+static void vTaskReadNTCs(){
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    while(true){
+        ESP_LOGI(TAG_NTC, "NTC1: %.2f °C", get_ntc_temperature_c(get_adc_voltage_mv_multisampling(ADC_UNIT_1, ADC_CHANNEL_0)));
+        vTaskDelayUntil(&xLastWakeTime, NTC_READ_TASK_DELAY_MS / portTICK_PERIOD_MS);
+    }
+}
