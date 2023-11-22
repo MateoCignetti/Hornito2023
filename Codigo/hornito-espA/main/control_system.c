@@ -10,7 +10,7 @@
 #define BUFFER_SIZE 10
 #define MAV_SIZE BUFFER_SIZE/2
 
-//static uint16_t adcBuffer[BUFFER_SIZE]={0};
+static uint16_t adcBuffer[BUFFER_SIZE]={0};
 static uint16_t mavBuffer[MAV_SIZE]={0};
 // Handles
 static TaskHandle_t xTaskControlSystemGetTemperature_handle = NULL;     // Handle for the get temperature
@@ -148,10 +148,14 @@ static void vTaskControlSystemGetTemperature(){
     TickType_t xLastWakeTime = xTaskGetTickCount();
     float sumMAV;
     //float suma=0;
-    while (true) {     
+    while (true) {
+        for (int i = 0; i < BUFFER_SIZE; i++) {
+            adcBuffer[i] = get_adc_voltage_mv_multisampling(ADC_UNIT, NTC1_CHANNEL);
+            vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));
+        }
         for (int k = 0; k < BUFFER_SIZE; k++) {
             if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
-                mavBuffer[0] = get_adc_voltage_mv_multisampling(ADC_UNIT, NTC1_CHANNEL);
+                mavBuffer[0] = adcBuffer[k];
                 xSemaphoreGive(mutexControlSystem);
             }
             sumMAV = 0;            
