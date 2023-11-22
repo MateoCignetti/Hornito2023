@@ -8,7 +8,7 @@
 #define ADC_UNIT ADC_UNIT_1                                             // ADC unit to use
 #define NTC1_CHANNEL ADC_CHANNEL_3                                      // ADC channel to use for NTC1
 #define BUFFER_SIZE 10
-#define MAV_SIZE BUFFER_SIZE/2
+#define MAV_SIZE 5
 
 static uint16_t adcBuffer[BUFFER_SIZE]={0};
 static uint16_t mavBuffer[MAV_SIZE]={0};
@@ -147,34 +147,30 @@ void delete_control_system_tasks(){
 static void vTaskControlSystemGetTemperature(){
     TickType_t xLastWakeTime = xTaskGetTickCount();
     float sumMAV;
-    //float suma=0;
+    float suma=0;
     while (true) {
-        for (int i = 0; i < BUFFER_SIZE; i++) {
-            adcBuffer[i] = get_adc_voltage_mv_multisampling(ADC_UNIT, NTC1_CHANNEL);
-            vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));
-        }
-        for (int k = 0; k < BUFFER_SIZE; k++) {
+        /*for (int i = 0; i < BUFFER_SIZE; i++) {
             if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
-                mavBuffer[0] = adcBuffer[k];
+                adcBuffer[i] = get_adc_voltage_mv_multisampling(ADC_UNIT, NTC1_CHANNEL);
                 xSemaphoreGive(mutexControlSystem);
             }
+            vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(20));
+        }*/
+        for (int k = 0; k < BUFFER_SIZE; k++) {
             sumMAV = 0;            
+            mavBuffer[0] = get_adc_voltage_mv_multisampling(ADC_UNIT, NTC1_CHANNEL);
+            //vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));
             for(int j=0; j < MAV_SIZE; j++){
                 sumMAV += mavBuffer[j];
             }
-            shift_mav_filter();
+            for (int i = (MAV_SIZE-1); i > 0; i--) {
+                mavBuffer[i] = mavBuffer[i-1];
+            } 
             temperature=sumMAV/(MAV_SIZE);
         }
-
         ESP_LOGI(TAG_CONTROL, "NTC1: %.2f °C", temperature);
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));
     }
-}
-
-void shift_mav_filter(void){
-    for (int i = (MAV_SIZE-1); i > 0; i--) {
-        mavBuffer[i] = mavBuffer[i-1];
-    }    
 }
 
 // Send temperature to web. First queue and semaphore are created that used to send temperature to web. In the while loop,
