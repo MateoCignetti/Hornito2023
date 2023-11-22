@@ -7,7 +7,11 @@
 #define CONTROL_MONITORING_TASK_DELAY_MS 2000                           // Defines the period of the control system monitoring task mentioned above
 #define ADC_UNIT ADC_UNIT_1                                             // ADC unit to use
 #define NTC1_CHANNEL ADC_CHANNEL_3                                      // ADC channel to use for NTC1
+#define BUFFER_SIZE 10
+#define MAV_SIZE BUFFER_SIZE/2
 
+//static uint16_t adcBuffer[BUFFER_SIZE]={0};
+static uint16_t mavBuffer[MAV_SIZE]={0};
 // Handles
 static TaskHandle_t xTaskControlSystemGetTemperature_handle = NULL;     // Handle for the get temperature
 static TaskHandle_t xTaskControlSystemSendTemperature_handle = NULL;    // Handle for the send temperature
@@ -38,6 +42,7 @@ const static char* TAG_CONTROL = "CONTROL";                             // Tag f
 void create_control_system_tasks();
 void create_control_system_semaphores_queues();
 void delete_control_system_tasks();
+void shift_mav_filter(void);
 static void vTaskControlSystemDecision();
 static void vTaskControlSystemGetTemperature();
 static void vTaskControlSystemSendTemperature();
@@ -141,14 +146,31 @@ void delete_control_system_tasks(){
 // and then the mutex is given to indicate that the critical section is free, when the temperature is got. 
 static void vTaskControlSystemGetTemperature(){
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    while (true) {
-        if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
-            temperature = get_ntc_temperature_c(get_adc_voltage_mv_multisampling(ADC_UNIT, NTC1_CHANNEL));
-            xSemaphoreGive(mutexControlSystem);
+    float sumMAV;
+    //float suma=0;
+    while (true) {     
+        for (int k = 0; k < BUFFER_SIZE; k++) {
+            if (xSemaphoreTake(mutexControlSystem, portMAX_DELAY)) {
+                mavBuffer[0] = get_adc_voltage_mv_multisampling(ADC_UNIT, NTC1_CHANNEL);
+                xSemaphoreGive(mutexControlSystem);
+            }
+            sumMAV = 0;            
+            for(int j=0; j < MAV_SIZE; j++){
+                sumMAV += mavBuffer[j];
+            }
+            shift_mav_filter();
+            temperature=sumMAV/(MAV_SIZE);
         }
+
         ESP_LOGI(TAG_CONTROL, "NTC1: %.2f °C", temperature);
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(TASK_CONTROL_SYSTEM_DELAY_MS));
     }
+}
+
+void shift_mav_filter(void){
+    for (int i = (MAV_SIZE-1); i > 0; i--) {
+        mavBuffer[i] = mavBuffer[i-1];
+    }    
 }
 
 // Send temperature to web. First queue and semaphore are created that used to send temperature to web. In the while loop,
