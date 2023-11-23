@@ -29,7 +29,7 @@ QueueHandle_t xQueueControlSystem;                                      // Queue
 SemaphoreHandle_t xSemaphoreControlSystem;                              // Semaphore to indicate that temperature is ready to send
 QueueHandle_t xQueueControlSystemToPower;                               // Queue to send steps to power
 SemaphoreHandle_t xSemaphoreControlSystemToPower;                       // Semaphore to indicate that steps are ready to send
-static uint16_t mavBuffer[MAV_SIZE]={0};                                // Moving average filter buffer
+static float mavBuffer[MAV_SIZE]={0};                                   // Moving average filter buffer
 //
 
 // ESP-LOG Tags
@@ -189,7 +189,7 @@ static void vTaskControlSystemSendTemperature(){
 // set point temperature and temperature. Finally, the dimmer delay is set according to the temperature difference and it sends
 // its value to the dimmer task.
 static void vTaskControlSystemDecision(){
-    int temperatureDifference = 0.0;
+    float temperatureDifference = 0.0;
     //int currentTemperatureDifference = 0;
     //int previousTemperatureDifference = 0;
     //int dimmer = 9200;
