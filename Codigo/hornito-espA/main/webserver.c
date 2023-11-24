@@ -6,7 +6,7 @@
 #define TIME_ARRAY_SIZE       100                       // Maximum length of time string.
 #define POWER_ARRAY_SIZE      100                       // Maximum length of power string.
 #define TEMP_ARRAY_SIZE       100                       // Maximum length of temperature string.
-#define UPDATE_DATA_DELAY_MS  30000                     // Period of updating data task.
+#define UPDATE_DATA_DELAY_MS  600000                     // Period of updating data task.
 #define POWER_QUEUE_DELAY_MS  10000                      // Delay for Queue.
 
 #define DATA_TASK_MONITORING  0

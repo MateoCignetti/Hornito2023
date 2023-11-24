@@ -14,7 +14,8 @@
                                                                     // the full bridge rectifier)
 
 #define TRANSORMER_RATIO 16.58                                      // Transformer ratio (Vprimary / Vsecondary)
-#define INTERIOR_RESISTOR_O 33.5                                    // Interior resistor in Ohms
+//#define INTERIOR_RESISTOR_O 33.5                                    // Interior resistor in Ohms
+#define INTERIOR_RESISTOR_O 217.5                                   // Interior resistor in Ohms
 //#define EXTERIOR_RESISTOR_O 217.5                                 // Exterior resistor in Ohms
 #define RECEIVE_STEPS_TIMEOUT_MS 5000                               // Timeout for receiving steps from control system in milliseconds
 #define ZERO_VOLTAGE_LOW_THRESHOLD 120.0                            // Low value threshold for a to be considered 0 mV

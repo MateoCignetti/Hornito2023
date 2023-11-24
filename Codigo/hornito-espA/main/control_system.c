@@ -29,7 +29,7 @@ QueueHandle_t xQueueControlSystem;                                      // Queue
 SemaphoreHandle_t xSemaphoreControlSystem;                              // Semaphore to indicate that temperature is ready to send
 QueueHandle_t xQueueControlSystemToPower;                               // Queue to send steps to power
 SemaphoreHandle_t xSemaphoreControlSystemToPower;                       // Semaphore to indicate that steps are ready to send
-static float mavBuffer[MAV_SIZE]={0};                                   // Moving average filter buffer
+static float mavBuffer[MAV_SIZE]={26};                                   // Moving average filter buffer
 //
 
 // ESP-LOG Tags
@@ -189,7 +189,7 @@ static void vTaskControlSystemSendTemperature(){
 // set point temperature and temperature. Finally, the dimmer delay is set according to the temperature difference and it sends
 // its value to the dimmer task.
 static void vTaskControlSystemDecision(){
-    float temperatureDifference = 0.0;
+    int temperatureDifference = 0;
     //int currentTemperatureDifference = 0;
     //int previousTemperatureDifference = 0;
     //int dimmer = 9200;
@@ -201,19 +201,19 @@ static void vTaskControlSystemDecision(){
         }
         
         if (temperatureDifference > 50) {
-            dimmer_delay_us = 6800;  
+            dimmer_delay_us = 6000;  
         } else if (temperatureDifference <= 50 && temperatureDifference > 45) {
-            dimmer_delay_us = 7200;
+            dimmer_delay_us = 6400;
         } else if (temperatureDifference <= 45 && temperatureDifference > 40) {
-            dimmer_delay_us = 7600;
+            dimmer_delay_us = 6800;
         } else if (temperatureDifference <= 40 && temperatureDifference > 35) {
-            dimmer_delay_us = 8000;
+            dimmer_delay_us = 7200;
         } else if (temperatureDifference <= 35 && temperatureDifference > 30) {
-            dimmer_delay_us = 8400;
+            dimmer_delay_us = 7600;
         } else if (temperatureDifference <= 30 && temperatureDifference > 20) {
-            dimmer_delay_us = 8800;
+            dimmer_delay_us = 6800;
         } else if (temperatureDifference <= 20 && temperatureDifference > 0) {
-            dimmer_delay_us = 9200;
+            dimmer_delay_us = 8400;
         } else {
             disable_dimmer();
             is_dimmer_disabled = true;
